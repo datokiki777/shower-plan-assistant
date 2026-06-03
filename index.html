@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Shower Plan Assistant</title>
+  <meta name="description" content="German shower plan OCR, Georgian translation and report export." />
+  <meta name="theme-color" content="#0e5c56" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/favicon.ico" sizes="any" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script defer src="js/app.js"></script>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">PDF / Skizze / Georgian report</p>
+        <h1>Shower Plan Assistant</h1>
+      </div>
+      <div class="status-pill" id="connectionStatus">ლოკალური რეჟიმი</div>
+    </header>
+
+    <section class="workspace">
+      <aside class="upload-panel">
+        <div class="drop-zone" id="dropZone">
+          <input id="fileInput" type="file" accept="application/pdf,image/*" multiple />
+          <div class="drop-art" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </div>
+          <h2>ფაილების ატვირთვა</h2>
+          <p>PDF, ფოტო ან screenshot. AI გაურკვეველ ტექსტს მონიშნავს როგორც გადასამოწმებელია.</p>
+          <button class="primary" type="button" id="pickFilesBtn">ფაილების არჩევა</button>
+        </div>
+
+        <div class="file-list" id="fileList"></div>
+
+        <div class="actions">
+          <button class="primary" type="button" id="analyzeBtn">AI ანალიზი</button>
+          <button type="button" id="demoBtn">Demo შედეგი</button>
+          <button type="button" id="clearBtn">გასუფთავება</button>
+        </div>
+
+        <section class="history">
+          <div class="section-head">
+            <h2>ისტორია</h2>
+            <button type="button" id="clearHistoryBtn">წაშლა</button>
+          </div>
+          <div id="historyList" class="history-list"></div>
+        </section>
+      </aside>
+
+      <section class="report-panel">
+        <div class="report-toolbar">
+          <div>
+            <p class="eyebrow">ქართული ანგარიში</p>
+            <h2 id="reportTitle">ახალი სამუშაო</h2>
+          </div>
+          <div class="toolbar-actions">
+            <button type="button" id="saveBtn">შენახვა</button>
+            <button class="primary" type="button" id="exportBtn">PDF export</button>
+          </div>
+        </div>
+
+        <div class="alert" id="alertBox" hidden></div>
+
+        <form id="reportForm" class="report-grid">
+          <section class="form-card">
+            <h3>კლიენტის მონაცემები</h3>
+            <label>კლიენტის სახელი <input name="clientName" /></label>
+            <label>მისამართი <textarea name="address" rows="2"></textarea></label>
+            <div class="two-col">
+              <label>შეკვეთის ნომერი <input name="orderNumber" /></label>
+              <label>თარიღი <input name="date" /></label>
+            </div>
+          </section>
+
+          <section class="form-card">
+            <h3>სამუშაოს მოკლე აღწერა</h3>
+            <label>შეჯამება ქართულად <textarea name="translatedSummaryKa" rows="5"></textarea></label>
+            <label>დუშტასეს ზომა <input name="showerTraySize" /></label>
+          </section>
+
+          <section class="form-card">
+            <h3>მასალები</h3>
+            <label>შუშის ზომები <textarea name="glassSizes" rows="4"></textarea></label>
+            <label>პანელები / ფართობი <textarea name="panelTypes" rows="4"></textarea></label>
+            <label>არმატურა <textarea name="fittings" rows="3"></textarea></label>
+          </section>
+
+          <section class="form-card">
+            <h3>ნახაზის ახსნა</h3>
+            <div class="sketch-grid">
+              <label>კარი <textarea name="door" rows="2"></textarea></label>
+              <label>WC <textarea name="wc" rows="2"></textarea></label>
+              <label>ფანჯარა <textarea name="window" rows="2"></textarea></label>
+              <label>დუშტასე <textarea name="showerTray" rows="2"></textarea></label>
+              <label>ფიქსირებული შუშა <textarea name="fixedGlass" rows="2"></textarea></label>
+              <label>მოძრავი შუშა <textarea name="movingGlass" rows="2"></textarea></label>
+              <label class="wide">პანელით დასაფარი კედლები <textarea name="panelWalls" rows="2"></textarea></label>
+            </div>
+          </section>
+
+          <section class="form-card">
+            <h3>დამატებითი სამუშაოები და შენიშვნები</h3>
+            <label>დამატებითი სამუშაოები <textarea name="extraWork" rows="4"></textarea></label>
+            <label>სამუშაო შენიშვნები <textarea name="workNotes" rows="4"></textarea></label>
+            <label>საეჭვო / გადასამოწმებელი ადგილები <textarea name="suspiciousItems" rows="4"></textarea></label>
+          </section>
+
+          <section class="form-card">
+            <h3>ფასების ცხრილი</h3>
+            <div id="priceRows" class="price-rows"></div>
+            <button type="button" id="addPriceBtn">ფასის დამატება</button>
+            <label>ჯამი <input name="totalPrice" /></label>
+          </section>
+        </form>
+      </section>
+    </section>
+  </main>
+</body>
+</html>
