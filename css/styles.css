@@ -239,9 +239,16 @@ button:disabled { opacity: 0.55; cursor: wait; }
   margin-top: 10px;
 }
 
+.term-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
 .term-item {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 8px;
   padding: 7px 8px;
   border: 1px solid #e5d7b8;
@@ -252,6 +259,11 @@ button:disabled { opacity: 0.55; cursor: wait; }
 
 .term-item button {
   padding: 2px 7px;
+}
+
+.term-item-actions {
+  display: flex;
+  gap: 5px;
 }
 
 .file-chip,

@@ -2,6 +2,17 @@ const UNKNOWN = "გადასამოწმებელია";
 const DB_NAME = "shower-plan-assistant";
 const STORE = "reports";
 const TERM_STORE = "showerPlanTerms";
+const TERM_SEEDED = "showerPlanTermsSeeded";
+const DEFAULT_TERMS = [
+  { de: "Vorsprung", ka: "კედლის უჯრა" },
+  { de: "Bauschutt", ka: "სამშენებლო ნარჩენები" },
+  { de: "Boden fullen", ka: "იატაკის ამოვსება" },
+  { de: "Boden füllen", ka: "იატაკის ამოვსება" },
+  { de: "Boden auffullen", ka: "იატაკის ამოვსება" },
+  { de: "Boden auffüllen", ka: "იატაკის ამოვსება" },
+  { de: "Griff", ka: "სახელური" },
+  { de: "Haltegriff", ka: "სახელური" }
+];
 
 const fields = [
   "clientName",
@@ -49,11 +60,16 @@ const els = {
   termGeorgianInput: $("#termGeorgianInput"),
   addTermBtn: $("#addTermBtn"),
   clearTermsBtn: $("#clearTermsBtn"),
+  toggleTermsBtn: $("#toggleTermsBtn"),
+  termSummary: $("#termSummary"),
   termList: $("#termList"),
   usagePercent: $("#usagePercent"),
   usageBar: $("#usageBar"),
   usageText: $("#usageText")
 };
+
+let termsManagerOpen = false;
+let editingTermIndex = -1;
 
 function normalizeApiBase(value) {
   return String(value || "").trim().replace(/\/+$/, "");
@@ -123,9 +139,31 @@ function saveTerms(terms) {
   localStorage.setItem(TERM_STORE, JSON.stringify(terms));
 }
 
+function ensureDefaultTerms() {
+  if (localStorage.getItem(TERM_SEEDED)) return;
+  const terms = getTerms();
+  const merged = [...terms];
+  DEFAULT_TERMS.forEach((defaultTerm) => {
+    if (!merged.some((term) => term.de.toLowerCase() === defaultTerm.de.toLowerCase())) {
+      merged.push(defaultTerm);
+    }
+  });
+  saveTerms(merged);
+  localStorage.setItem(TERM_SEEDED, "1");
+}
+
 function renderTerms() {
   if (!els.termList) return;
   const terms = getTerms();
+  if (els.termSummary) {
+    els.termSummary.textContent = terms.length
+      ? `${terms.length} ტერმინი შენახულია და ანალიზში ავტომატურად გამოიყენება.`
+      : "დამატებული ტერმინები ანალიზში ავტომატურად გამოიყენება.";
+  }
+  if (els.termList) els.termList.hidden = !termsManagerOpen;
+  if (els.clearTermsBtn) els.clearTermsBtn.hidden = !termsManagerOpen || !terms.length;
+  if (els.toggleTermsBtn) els.toggleTermsBtn.textContent = termsManagerOpen ? "დამალვა" : "მართვა";
+  if (!termsManagerOpen) return;
   if (!terms.length) {
     els.termList.innerHTML = '<div class="term-item"><span>ჯერ ტერმინი არ არის დამატებული</span></div>';
     return;
@@ -134,15 +172,36 @@ function renderTerms() {
   terms.forEach((term, index) => {
     const item = document.createElement("div");
     item.className = "term-item";
-    item.innerHTML = `<span><strong>${escapeHtml(term.de)}</strong> = ${escapeHtml(term.ka)}</span><button type="button">×</button>`;
-    item.querySelector("button").addEventListener("click", () => {
+    item.innerHTML = `
+      <span><strong>${escapeHtml(term.de)}</strong> = ${escapeHtml(term.ka)}</span>
+      <span class="term-item-actions">
+        <button type="button" data-action="edit">შეცვლა</button>
+        <button type="button" data-action="delete">წაშლა</button>
+      </span>
+    `;
+    item.querySelector('[data-action="edit"]').addEventListener("click", () => {
+      editingTermIndex = index;
+      els.termGermanInput.value = term.de;
+      els.termGeorgianInput.value = term.ka;
+      els.addTermBtn.textContent = "ტერმინის შენახვა";
+      els.termGermanInput.focus();
+    });
+    item.querySelector('[data-action="delete"]').addEventListener("click", () => {
       const next = getTerms();
       next.splice(index, 1);
       saveTerms(next);
+      if (editingTermIndex === index) resetTermEditor();
       renderTerms();
     });
     els.termList.appendChild(item);
   });
+}
+
+function resetTermEditor() {
+  editingTermIndex = -1;
+  if (els.termGermanInput) els.termGermanInput.value = "";
+  if (els.termGeorgianInput) els.termGeorgianInput.value = "";
+  if (els.addTermBtn) els.addTermBtn.textContent = "ტერმინის დამატება";
 }
 
 function addTerm() {
@@ -152,13 +211,21 @@ function addTerm() {
     showAlert("ტერმინისთვის გერმანულიც და ქართულიც ჩაწერე.", "warn");
     return;
   }
-  const terms = getTerms().filter((term) => term.de.toLowerCase() !== de.toLowerCase());
-  terms.push({ de, ka });
+  const terms = getTerms();
+  if (editingTermIndex >= 0 && editingTermIndex < terms.length) {
+    terms[editingTermIndex] = { de, ka };
+  } else {
+    const existingIndex = terms.findIndex((term) => term.de.toLowerCase() === de.toLowerCase());
+    if (existingIndex >= 0) {
+      terms[existingIndex] = { de, ka };
+    } else {
+      terms.push({ de, ka });
+    }
+  }
   saveTerms(terms);
-  els.termGermanInput.value = "";
-  els.termGeorgianInput.value = "";
+  resetTermEditor();
   renderTerms();
-  showAlert("ტერმინი დაემატა ლექსიკონში.", "ok");
+  showAlert("ტერმინი შენახულია და მომავალ ანალიზში გამოიყენება.", "ok");
 }
 
 function addUsageEstimate(usage) {
@@ -668,8 +735,13 @@ function bindEvents() {
     showAlert("ისტორია წაიშალა.", "info");
   });
   els.addTermBtn?.addEventListener("click", addTerm);
+  els.toggleTermsBtn?.addEventListener("click", () => {
+    termsManagerOpen = !termsManagerOpen;
+    renderTerms();
+  });
   els.clearTermsBtn?.addEventListener("click", () => {
     saveTerms([]);
+    resetTermEditor();
     renderTerms();
     showAlert("ტერმინების ლექსიკონი გასუფთავდა.", "info");
   });
@@ -692,6 +764,7 @@ function bindEvents() {
 
 async function init() {
   bindEvents();
+  ensureDefaultTerms();
   renderFiles();
   syncFormFromReport();
   await renderHistory();

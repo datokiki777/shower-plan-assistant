@@ -153,15 +153,8 @@ function parseGlossary(value) {
 }
 
 function glossaryText(glossary) {
-  const base = [
-    "Vorsprung = კედლის უჯრა",
-    "Bauschutt = სამშენებლო ნარჩენები",
-    "Boden fullen / Boden füllen / Boden auffullen / Boden auffüllen = იატაკის ამოვსება",
-    "Griff = სახელური",
-    "Haltegriff = სახელური"
-  ];
-  const custom = glossary.map((item) => `${item.de} = ${item.ka}`);
-  return [...base, ...custom].join("; ");
+  if (!glossary.length) return "No extra glossary terms.";
+  return glossary.map((item) => `${item.de} = ${item.ka}`).join("; ");
 }
 
 function offerPrompt(glossary = []) {

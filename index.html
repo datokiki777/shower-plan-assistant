@@ -61,14 +61,18 @@
         <section class="term-box">
           <div class="section-head">
             <h2>ტერმინების ლექსიკონი</h2>
-            <button type="button" id="clearTermsBtn">გასუფთავება</button>
+            <button type="button" id="toggleTermsBtn">მართვა</button>
           </div>
+          <small id="termSummary">დამატებული ტერმინები ანალიზში ავტომატურად გამოიყენება.</small>
           <div class="term-row">
             <input id="termGermanInput" placeholder="German term" />
             <input id="termGeorgianInput" placeholder="ქართული მნიშვნელობა" />
           </div>
-          <button type="button" id="addTermBtn">ტერმინის დამატება</button>
-          <div id="termList" class="term-list"></div>
+          <div class="term-actions">
+            <button type="button" id="addTermBtn">ტერმინის დამატება</button>
+            <button type="button" id="clearTermsBtn" hidden>ყველას წაშლა</button>
+          </div>
+          <div id="termList" class="term-list" hidden></div>
         </section>
 
         <section class="history">
