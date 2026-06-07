@@ -5,12 +5,14 @@ const STORE = "reports";
 const fields = [
   "clientName",
   "address",
-  "orderNumber",
-  "date",
+  "packageType",
   "showerTraySize",
-  "glassSizes",
-  "panelTypes",
-  "fittings",
+  "antiSlip",
+  "glassPartitionSize",
+  "hingedDoorSize",
+  "panelColor",
+  "panelHeight",
+  "installables",
   "extraWork",
   "totalPrice",
   "workNotes",
@@ -45,7 +47,10 @@ const els = {
   reportTitle: $("#reportTitle"),
   connectionStatus: $("#connectionStatus"),
   apiBaseInput: $("#apiBaseInput"),
-  saveApiBaseBtn: $("#saveApiBaseBtn")
+  saveApiBaseBtn: $("#saveApiBaseBtn"),
+  usagePercent: $("#usagePercent"),
+  usageBar: $("#usageBar"),
+  usageText: $("#usageText")
 };
 
 function normalizeApiBase(value) {
@@ -72,12 +77,14 @@ function createEmptyReport() {
     sourceFiles: [],
     clientName: UNKNOWN,
     address: UNKNOWN,
-    orderNumber: UNKNOWN,
-    date: UNKNOWN,
+    packageType: UNKNOWN,
     showerTraySize: UNKNOWN,
-    glassSizes: [],
-    panelTypes: [],
-    fittings: [],
+    antiSlip: UNKNOWN,
+    glassPartitionSize: UNKNOWN,
+    hingedDoorSize: UNKNOWN,
+    panelColor: UNKNOWN,
+    panelHeight: UNKNOWN,
+    installables: [],
     extraWork: [],
     prices: [{ label: UNKNOWN, amount: UNKNOWN }],
     totalPrice: UNKNOWN,
@@ -86,6 +93,47 @@ function createEmptyReport() {
     suspiciousItems: [UNKNOWN],
     translatedSummaryKa: UNKNOWN
   };
+}
+
+function currentUsageKey() {
+  const now = new Date();
+  return `showerPlanUsage-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getUsageState() {
+  try {
+    return JSON.parse(localStorage.getItem(currentUsageKey())) || { costUsd: 0, budgetUsd: 5, analyses: 0, lastCostUsd: 0 };
+  } catch {
+    return { costUsd: 0, budgetUsd: 5, analyses: 0, lastCostUsd: 0 };
+  }
+}
+
+function saveUsageState(usage) {
+  localStorage.setItem(currentUsageKey(), JSON.stringify(usage));
+}
+
+function addUsageEstimate(usage) {
+  if (!usage) return;
+  const state = getUsageState();
+  const cost = Number(usage.estimatedCostUsd || 0);
+  state.costUsd = Number((Number(state.costUsd || 0) + cost).toFixed(6));
+  state.budgetUsd = Number(usage.budgetUsd || state.budgetUsd || 5);
+  state.analyses = Number(state.analyses || 0) + 1;
+  state.lastCostUsd = cost;
+  state.lastTokens = Number(usage.totalTokens || 0);
+  saveUsageState(state);
+}
+
+function renderUsageMeter() {
+  const usage = getUsageState();
+  const budget = Number(usage.budgetUsd || 5);
+  const percent = budget > 0 ? Math.min(100, (Number(usage.costUsd || 0) / budget) * 100) : 0;
+  if (els.usagePercent) els.usagePercent.textContent = `${percent.toFixed(percent < 10 ? 1 : 0)}%`;
+  if (els.usageBar) els.usageBar.style.width = `${percent}%`;
+  if (els.usageText) {
+    const last = usage.lastCostUsd ? ` ბოლო ანალიზი ~$${Number(usage.lastCostUsd).toFixed(4)}.` : "";
+    els.usageText.textContent = `$${Number(usage.costUsd || 0).toFixed(4)} / $${budget.toFixed(2)} დაახლოებით.${last}`;
+  }
 }
 
 function arrayToText(value) {
@@ -219,9 +267,12 @@ async function analyzeFiles() {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || "ანალიზი ვერ შესრულდა");
     state.report = normalizeReport(payload);
+    addUsageEstimate(payload.usage);
+    renderUsageMeter();
     syncFormFromReport();
     await saveCurrentReport(false);
-    showAlert("AI ანალიზი დასრულდა. გადაამოწმე მონიშნული ადგილები და საჭიროებისამებრ ჩაასწორე.", "ok");
+    const costText = payload.usage?.estimatedCostUsd ? ` დაახლოებით ღირებულება: $${Number(payload.usage.estimatedCostUsd).toFixed(4)}.` : "";
+    showAlert(`AI ანალიზი დასრულდა. გადაამოწმე მონიშნული ადგილები და საჭიროებისამებრ ჩაასწორე.${costText}`, "ok");
   } catch (error) {
     showAlert(`${error.message}. შეგიძლია გამოიყენო Demo შედეგი ან გაუშვა Node backend OPENAI_API_KEY-ით.`, "warn");
   } finally {
@@ -236,12 +287,14 @@ function loadDemo() {
     analysis: {
       clientName: fileHint.replace(/\.pdf$/i, ""),
       address: UNKNOWN,
-      orderNumber: UNKNOWN,
-      date: UNKNOWN,
+      packageType: UNKNOWN,
       showerTraySize: "ზომა დოკუმენტიდან წასაკითხია - გადასამოწმებელია",
-      glassSizes: ["ფიქსირებული შუშა: გადასამოწმებელია", "მოძრავი შუშა/კარი: გადასამოწმებელია"],
-      panelTypes: ["პანელის ტიპი და ფართობი: გადასამოწმებელია"],
-      fittings: ["არმატურა: გადასამოწმებელია"],
+      antiSlip: UNKNOWN,
+      glassPartitionSize: UNKNOWN,
+      hingedDoorSize: UNKNOWN,
+      panelColor: UNKNOWN,
+      panelHeight: UNKNOWN,
+      installables: ["დასაყენებლების სია: გადასამოწმებელია"],
       extraWork: ["დამატებითი სამუშაოები: გადასამოწმებელია"],
       prices: [{ label: "მასალები და მონტაჟი", amount: UNKNOWN }],
       totalPrice: UNKNOWN,
@@ -366,12 +419,12 @@ function buildPrintableReportContent() {
       <p>ქართული სამუშაო ანგარიში</p>
       <div class="meta">
         <p><strong>კლიენტი:</strong> ${escapeHtml(state.report.clientName)}</p>
-        <p><strong>თარიღი:</strong> ${escapeHtml(state.report.date)}</p>
         <p><strong>მისამართი:</strong> ${escapeHtml(state.report.address)}</p>
-        <p><strong>შეკვეთის ნომერი:</strong> ${escapeHtml(state.report.orderNumber)}</p>
+        <p><strong>პაკეტი:</strong> ${escapeHtml(state.report.packageType)}</p>
+        <p><strong>ანტისრიალი:</strong> ${escapeHtml(state.report.antiSlip)}</p>
       </div>
       ${section("სამუშაოს მოკლე აღწერა", `<p>${escapeHtml(state.report.translatedSummaryKa)}</p><p><strong>დუშტასე:</strong> ${escapeHtml(state.report.showerTraySize)}</p>`)}
-      ${section("მასალები", `<h3>შუშის ზომები</h3>${list(state.report.glassSizes)}<h3>პანელები / ფართობი</h3>${list(state.report.panelTypes)}<h3>არმატურა</h3>${list(state.report.fittings)}`)}
+      ${section("მასალები", `<p><strong>შუშის ზომა:</strong> ${escapeHtml(state.report.glassPartitionSize)}</p><p><strong>დასაკიდი კარის ზომა:</strong> ${escapeHtml(state.report.hingedDoorSize)}</p><p><strong>პანელის ფერი:</strong> ${escapeHtml(state.report.panelColor)}</p><p><strong>პანელი სადამდე კეთდება:</strong> ${escapeHtml(state.report.panelHeight)}</p><h3>დასაყენებლების სია</h3>${list(state.report.installables)}`)}
       ${section("ნახაზის ახსნა", `<table><tbody>${sketchFields.map((key) => `<tr><th>${escapeHtml(labelForSketch(key))}</th><td>${escapeHtml(state.report.sketchExplanation[key])}</td></tr>`).join("")}</tbody></table>`)}
       ${section("დამატებითი სამუშაოები", list(state.report.extraWork))}
       ${section("ფასების ცხრილი", `<table><thead><tr><th>პოზიცია</th><th>ფასი</th></tr></thead><tbody>${priceRows}<tr><th>ჯამი</th><th>${escapeHtml(state.report.totalPrice)}</th></tr></tbody></table>`)}
@@ -522,6 +575,7 @@ async function init() {
   renderFiles();
   syncFormFromReport();
   await renderHistory();
+  renderUsageMeter();
   await checkBackend();
   registerServiceWorker();
 }

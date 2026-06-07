@@ -43,12 +43,14 @@ const UNKNOWN = "გადასამოწმებელია";
 const emptyAnalysis = () => ({
   clientName: UNKNOWN,
   address: UNKNOWN,
-  orderNumber: UNKNOWN,
-  date: UNKNOWN,
+  packageType: UNKNOWN,
   showerTraySize: UNKNOWN,
-  glassSizes: [],
-  panelTypes: [],
-  fittings: [],
+  antiSlip: UNKNOWN,
+  glassPartitionSize: UNKNOWN,
+  hingedDoorSize: UNKNOWN,
+  panelColor: UNKNOWN,
+  panelHeight: UNKNOWN,
+  installables: [],
   extraWork: [],
   prices: [],
   totalPrice: UNKNOWN,
@@ -74,12 +76,14 @@ const analysisSchema = {
     properties: {
       clientName: { type: "string" },
       address: { type: "string" },
-      orderNumber: { type: "string" },
-      date: { type: "string" },
+      packageType: { type: "string" },
       showerTraySize: { type: "string" },
-      glassSizes: { type: "array", items: { type: "string" } },
-      panelTypes: { type: "array", items: { type: "string" } },
-      fittings: { type: "array", items: { type: "string" } },
+      antiSlip: { type: "string" },
+      glassPartitionSize: { type: "string" },
+      hingedDoorSize: { type: "string" },
+      panelColor: { type: "string" },
+      panelHeight: { type: "string" },
+      installables: { type: "array", items: { type: "string" } },
       extraWork: { type: "array", items: { type: "string" } },
       prices: {
         type: "array",
@@ -115,12 +119,14 @@ const analysisSchema = {
     required: [
       "clientName",
       "address",
-      "orderNumber",
-      "date",
+      "packageType",
       "showerTraySize",
-      "glassSizes",
-      "panelTypes",
-      "fittings",
+      "antiSlip",
+      "glassPartitionSize",
+      "hingedDoorSize",
+      "panelColor",
+      "panelHeight",
+      "installables",
       "extraWork",
       "prices",
       "totalPrice",
@@ -147,6 +153,24 @@ function normalizeAnalysis(value) {
     merged.suspiciousItems = [UNKNOWN];
   }
   return merged;
+}
+
+function estimateCost(usage) {
+  const inputTokens = Number(usage?.input_tokens || usage?.prompt_tokens || 0);
+  const outputTokens = Number(usage?.output_tokens || usage?.completion_tokens || 0);
+  const totalTokens = Number(usage?.total_tokens || inputTokens + outputTokens);
+  const inputUsdPerMillion = Number(process.env.OPENAI_INPUT_USD_PER_1M || 2);
+  const outputUsdPerMillion = Number(process.env.OPENAI_OUTPUT_USD_PER_1M || 8);
+  const budgetUsd = Number(process.env.OPENAI_MONTHLY_BUDGET_USD || 5);
+  const estimatedCostUsd = (inputTokens / 1_000_000) * inputUsdPerMillion + (outputTokens / 1_000_000) * outputUsdPerMillion;
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens,
+    estimatedCostUsd: Number(estimatedCostUsd.toFixed(6)),
+    budgetUsd,
+    estimatedPercent: budgetUsd > 0 ? Number(((estimatedCostUsd / budgetUsd) * 100).toFixed(3)) : 0
+  };
 }
 
 function fileToContent(file) {
@@ -190,7 +214,7 @@ app.post("/api/analyze", upload.array("files", 8), async (req, res) => {
             {
               type: "input_text",
               text:
-                "You extract German shower installation order documents and sketches for Georgian workers. Never invent unclear values. If handwriting, dimensions, price, location, or sketch meaning is uncertain, return exactly 'გადასამოწმებელია' for that field or list item. Translate German notes into Georgian. Keep dimensions/prices exactly as written when readable."
+                "You extract German BADELIX shower installation offers for Georgian workers. Never invent unclear values. If handwriting, dimensions, price, location, checkbox state, or sketch meaning is uncertain, return exactly 'გადასამოწმებელია'. Do not extract order number or date. Translate German labels and handwritten notes into natural Georgian while preserving dimensions, prices, color names, package letters, and product names exactly when readable."
             }
           ]
         },
@@ -200,7 +224,7 @@ app.post("/api/analyze", upload.array("files", 8), async (req, res) => {
             {
               type: "input_text",
               text:
-                "Analyze these uploaded PDF/image documents. Extract client data, order data, shower tray and glass measurements, panel types/area, fittings, additional work, prices/total, work notes, and a simple Georgian explanation of the sketch layout: door, WC, window, shower tray, fixed/moving glass, and panel-covered walls."
+                "Analyze the BADELIX document by page logic. Page 1: extract only client first/last name and address exactly as written. Do not return order number or date. Page 2: extract selected system package as S or M, shower tray dimensions, and whether Antirutsch/anti-slip is selected. Page 3: extract selected glass partition size, selected hinged door/swing element size, BADELIX panel color such as UBEDA, selected faucet/shower items under BADELIX Armaturen, and call that list 'დასაყენებლების სია'. Faucet options are Mischbatterie and Thermomischbatterie. Hand shower options are Brauseset and Regendusche. Extract Zusatzarbeiten as 'დამატებითი სამუშაო' and translate handwritten work items into Georgian. Page 4: extract selected panel height. Translate Verkleidung bis Wannenrand as 'ძველი ვანის კანტამდე', Verkleidung bis Fliesenkante as 'კაფელის კანტამდე', and Verkleidung deckenhoch/Deckenhöhe as 'ჭერამდე'. Explain the sketch in Georgian: where window, door, shower tray, fixed/moving glass, WC, cabinet, protrusion/ledge (Vorsprung = უჯრა), panels and numbered handwritten notes are, preserving the original layout meaning. Also include suspicious/unclear items."
             },
             ...files.map(fileToContent)
           ]
@@ -218,7 +242,8 @@ app.post("/api/analyze", upload.array("files", 8), async (req, res) => {
     res.json({
       sourceFiles: files.map((file) => file.originalname),
       model,
-      analysis: normalizeAnalysis(parsed)
+      analysis: normalizeAnalysis(parsed),
+      usage: estimateCost(response.usage)
     });
   } catch (error) {
     console.error(error);

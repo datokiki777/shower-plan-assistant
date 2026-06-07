@@ -10,5 +10,11 @@ services:
         value: gpt-4.1
       - key: API_ORIGINS
         value: https://shower.dbuilder.eu,http://localhost:4177,http://127.0.0.1:4177
+      - key: OPENAI_MONTHLY_BUDGET_USD
+        value: "5"
+      - key: OPENAI_INPUT_USD_PER_1M
+        value: "2"
+      - key: OPENAI_OUTPUT_USD_PER_1M
+        value: "8"
       - key: OPENAI_API_KEY
         sync: false

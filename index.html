@@ -49,6 +49,15 @@
           <button type="button" id="saveApiBaseBtn">დაკავშირება</button>
         </section>
 
+        <section class="usage-meter">
+          <div class="usage-head">
+            <strong>თვიური ხარჯი</strong>
+            <span id="usagePercent">0%</span>
+          </div>
+          <div class="usage-bar"><span id="usageBar"></span></div>
+          <small id="usageText">$0.000 / $5.00 დაახლოებით</small>
+        </section>
+
         <section class="history">
           <div class="section-head">
             <h2>ისტორია</h2>
@@ -75,25 +84,29 @@
         <form id="reportForm" class="report-grid">
           <section class="form-card">
             <h3>კლიენტის მონაცემები</h3>
-            <label>კლიენტის სახელი <input name="clientName" /></label>
+            <label>სახელი და გვარი <input name="clientName" /></label>
             <label>მისამართი <textarea name="address" rows="2"></textarea></label>
-            <div class="two-col">
-              <label>შეკვეთის ნომერი <input name="orderNumber" /></label>
-              <label>თარიღი <input name="date" /></label>
-            </div>
           </section>
 
           <section class="form-card">
-            <h3>სამუშაოს მოკლე აღწერა</h3>
+            <h3>პაკეტი და დუშტასე</h3>
             <label>შეჯამება ქართულად <textarea name="translatedSummaryKa" rows="5"></textarea></label>
+            <div class="two-col">
+              <label>პაკეტი S/M <input name="packageType" /></label>
+              <label>ანტისრიალი <input name="antiSlip" /></label>
+            </div>
             <label>დუშტასეს ზომა <input name="showerTraySize" /></label>
           </section>
 
           <section class="form-card">
             <h3>მასალები</h3>
-            <label>შუშის ზომები <textarea name="glassSizes" rows="4"></textarea></label>
-            <label>პანელები / ფართობი <textarea name="panelTypes" rows="4"></textarea></label>
-            <label>არმატურა <textarea name="fittings" rows="3"></textarea></label>
+            <div class="two-col">
+              <label>შუშის ზომა <input name="glassPartitionSize" /></label>
+              <label>დასაკიდი კარის ზომა <input name="hingedDoorSize" /></label>
+            </div>
+            <label>პანელის ფერი <input name="panelColor" /></label>
+            <label>პანელი სადამდე კეთდება <input name="panelHeight" /></label>
+            <label>დასაყენებლების სია <textarea name="installables" rows="4"></textarea></label>
           </section>
 
           <section class="form-card">
