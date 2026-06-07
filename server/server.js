@@ -49,15 +49,6 @@ const emptyAnalysis = () => ({
   installables: [],
   extraWork: [],
   workNotes: [],
-  sketchExplanation: {
-    door: UNKNOWN,
-    wc: UNKNOWN,
-    window: UNKNOWN,
-    showerTray: UNKNOWN,
-    fixedGlass: UNKNOWN,
-    movingGlass: UNKNOWN,
-    panelWalls: UNKNOWN
-  },
   suspiciousItems: [UNKNOWN],
   sourceNotes: [],
 });
@@ -81,20 +72,6 @@ const analysisSchema = {
       installables: { type: "array", items: { type: "string" } },
       extraWork: { type: "array", items: { type: "string" } },
       workNotes: { type: "array", items: { type: "string" } },
-      sketchExplanation: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          door: { type: "string" },
-          wc: { type: "string" },
-          window: { type: "string" },
-          showerTray: { type: "string" },
-          fixedGlass: { type: "string" },
-          movingGlass: { type: "string" },
-          panelWalls: { type: "string" }
-        },
-        required: ["door", "wc", "window", "showerTray", "fixedGlass", "movingGlass", "panelWalls"]
-      },
       suspiciousItems: { type: "array", items: { type: "string" } },
       sourceNotes: { type: "array", items: { type: "string" } }
     },
@@ -112,7 +89,6 @@ const analysisSchema = {
       "installables",
       "extraWork",
       "workNotes",
-      "sketchExplanation",
       "suspiciousItems",
       "sourceNotes"
     ]
@@ -123,12 +99,8 @@ const analysisSchema = {
 function normalizeAnalysis(value) {
   const base = emptyAnalysis();
   const merged = { ...base, ...value };
-  merged.sketchExplanation = { ...base.sketchExplanation, ...(value?.sketchExplanation || {}) };
   for (const key of Object.keys(base)) {
     if (merged[key] === null || merged[key] === undefined || merged[key] === "") merged[key] = UNKNOWN;
-  }
-  for (const key of Object.keys(merged.sketchExplanation)) {
-    if (!merged.sketchExplanation[key]) merged.sketchExplanation[key] = UNKNOWN;
   }
   if (!Array.isArray(merged.suspiciousItems) || merged.suspiciousItems.length === 0) {
     merged.suspiciousItems = [UNKNOWN];
@@ -171,7 +143,7 @@ function fileToContent(file) {
 }
 
 function offerPrompt() {
-  return "Analyze the BADELIX document by fixed page logic. Page 1: extract only client first/last name, address exactly as written, and telephone number if readable. Do not return order number or date. Page 2: extract selected system package as S or M, shower tray dimensions, and whether Antirutsch/anti-slip is selected. Do not create a general work-description paragraph. Page 3: extract selected glass partition size, selected hinged door/swing element size, BADELIX panel color such as UBEDA, and selected faucet/shower items under BADELIX Armaturen. Call that list 'დასაყენებლების სია'. Faucet options are Mischbatterie and Thermomischbatterie. Hand shower options are Brauseset and Regendusche. Do not include item prices in installables. Extract Zusatzarbeiten as 'დამატებითი სამუშაო' and translate handwritten work items into Georgian, without prices unless the price is necessary to identify the handwritten line. Page 4 panel height rule is strict: there are exactly three checkbox options that matter. If 'Verkleidung bis Wannenrand' is checked, panelHeight must be 'ძველი ვანის კანტამდე'. If 'Verkleidung bis Fliesenkante' is checked, panelHeight must be 'კაფელის კანტამდე'. If 'Verkleidung deckenhoch' is checked, panelHeight must be 'ჭერამდე'. The separate 'Deckenhöhe ___ cm' value is only the room ceiling height from floor to ceiling and must NEVER be used as panelHeight and must not override the three checkboxes. Explain the sketch in Georgian: where window, door, shower tray, fixed/moving glass, WC, cabinet, protrusion/ledge (Vorsprung = უჯრა), panels and numbered handwritten notes are, preserving the original layout meaning. Also include suspicious/unclear items.";
+  return "Analyze the BADELIX document by fixed page logic. Page 1: extract only client first/last name, address exactly as written, and telephone number if readable. Do not return order number or date. Page 2: extract selected system package as S or M, shower tray dimensions, and whether Antirutsch/anti-slip is selected. Do not create a general work-description paragraph. Page 3: extract selected glass partition size, selected hinged door/swing element size, BADELIX panel color such as UBEDA, and selected faucet/shower items under BADELIX Armaturen. Call that list 'დასაყენებლების სია'. Faucet options are Mischbatterie and Thermomischbatterie. Hand shower options are Brauseset and Regendusche. Do not include item prices in installables. Extract Zusatzarbeiten as 'დამატებითი სამუშაო' and translate handwritten work items into Georgian, without prices unless the price is necessary to identify the handwritten line. Page 4 panel height rule is strict: there are exactly three checkbox options that matter. If 'Verkleidung bis Wannenrand' is checked, panelHeight must be 'ძველი ვანის კანტამდე'. If 'Verkleidung bis Fliesenkante' is checked, panelHeight must be 'კაფელის კანტამდე'. If 'Verkleidung deckenhoch' is checked, panelHeight must be 'ჭერამდე'. The separate 'Deckenhöhe ___ cm' value is only the room ceiling height from floor to ceiling and must NEVER be used as panelHeight and must not override the three checkboxes. Also include suspicious/unclear items.";
 }
 
 app.post("/api/analyze", upload.array("files", 8), async (req, res) => {
@@ -194,7 +166,7 @@ app.post("/api/analyze", upload.array("files", 8), async (req, res) => {
           content: [
             {
               type: "input_text",
-              text: "You extract German BADELIX PDFs for Georgian workers. Never invent unclear values. If handwriting, dimensions, location, checkbox state, totals, or sketch meaning is uncertain, return exactly 'გადასამოწმებელია'. Translate German labels and handwritten notes into natural Georgian while preserving dimensions, color names, package letters, product names, dates/ranges, prices, and numbers exactly when readable."
+              text: "You extract German BADELIX PDFs for Georgian workers. Never invent unclear values. If handwriting, dimensions, location, checkbox state, totals, or any value is uncertain, return exactly 'გადასამოწმებელია'. Translate German labels and handwritten notes into natural Georgian while preserving dimensions, color names, package letters, product names, dates/ranges, prices, and numbers exactly when readable."
             }
           ]
         },

@@ -19,8 +19,6 @@ const fields = [
   "suspiciousItems"
 ];
 
-const sketchFields = ["door", "wc", "window", "showerTray", "fixedGlass", "movingGlass", "panelWalls"];
-
 const state = {
   files: [],
   report: createEmptyReport()
@@ -87,7 +85,6 @@ function createEmptyReport() {
     installables: [],
     extraWork: [],
     workNotes: [],
-    sketchExplanation: Object.fromEntries(sketchFields.map((key) => [key, UNKNOWN])),
     suspiciousItems: [UNKNOWN],
     sourceNotes: []
   };
@@ -189,10 +186,6 @@ function syncFormFromReport() {
     if (!input) return;
     input.value = Array.isArray(report[name]) ? arrayToText(report[name]) : report[name] || "";
   });
-  sketchFields.forEach((name) => {
-    const input = els.reportForm.elements[name];
-    if (input) input.value = report.sketchExplanation?.[name] || UNKNOWN;
-  });
   renderPrices();
   els.reportTitle.textContent = report.clientName && report.clientName !== UNKNOWN ? report.clientName : "ახალი სამუშაო";
 }
@@ -202,11 +195,6 @@ function syncReportFromForm() {
     const input = els.reportForm.elements[name];
     if (!input) return;
     state.report[name] = Array.isArray(createEmptyReport()[name]) ? textToArray(input.value) : input.value.trim() || UNKNOWN;
-  });
-  state.report.sketchExplanation = state.report.sketchExplanation || {};
-  sketchFields.forEach((name) => {
-    const input = els.reportForm.elements[name];
-    state.report.sketchExplanation[name] = input?.value.trim() || UNKNOWN;
   });
   if (els.priceRows) {
     state.report.prices = [...els.priceRows.querySelectorAll(".price-row")].map((row) => ({
@@ -241,7 +229,6 @@ function normalizeReport(payload) {
   report.id = payload.id || crypto.randomUUID();
   report.createdAt = payload.createdAt || new Date().toISOString();
   report.sourceFiles = payload.sourceFiles || state.files.map((file) => file.name);
-  report.sketchExplanation = { ...createEmptyReport().sketchExplanation, ...(report.sketchExplanation || {}) };
   fields.forEach((name) => {
     if (Array.isArray(createEmptyReport()[name]) && !Array.isArray(report[name])) report[name] = textToArray(report[name]);
     if (!report[name] || (Array.isArray(report[name]) && report[name].length === 0)) report[name] = Array.isArray(createEmptyReport()[name]) ? [UNKNOWN] : UNKNOWN;
@@ -298,15 +285,6 @@ function loadDemo() {
       installables: ["დასაყენებლების სია: გადასამოწმებელია"],
       extraWork: ["დამატებითი სამუშაოები: გადასამოწმებელია"],
       workNotes: ["ხელნაწერი ან skizze სრულად უნდა გადამოწმდეს."],
-      sketchExplanation: {
-        door: UNKNOWN,
-        wc: UNKNOWN,
-        window: UNKNOWN,
-        showerTray: UNKNOWN,
-        fixedGlass: UNKNOWN,
-        movingGlass: UNKNOWN,
-        panelWalls: UNKNOWN
-      },
       suspiciousItems: ["ზომები", "ხელნაწერი შენიშვნები"]
     }
   });
@@ -402,8 +380,8 @@ function exportPdf() {
   window.addEventListener("afterprint", cleanup);
   window.setTimeout(() => {
     window.print();
-    window.setTimeout(cleanup, 1200);
-  }, 100);
+    window.setTimeout(cleanup, 2500);
+  }, 250);
 }
 
 function buildPrintableReportContent() {
@@ -415,23 +393,10 @@ function buildPrintableReportContent() {
       ${section("კლიენტის მონაცემები", `<p><strong>კლიენტი:</strong> ${escapeHtml(state.report.clientName)}</p><p><strong>მისამართი:</strong> ${escapeHtml(state.report.address)}</p><p><strong>ტელეფონი:</strong> ${escapeHtml(state.report.phone)}</p>`)}
       ${section("პაკეტი და დუშთასე", `<p><strong>პაკეტი:</strong> ${escapeHtml(state.report.packageType)}</p><p><strong>დუშთასე:</strong> ${escapeHtml(state.report.showerTraySize)}</p><p><strong>ანტირუჩი:</strong> ${escapeHtml(state.report.antiSlip)}</p>`)}
       ${section("მასალები", `<p><strong>შუშის ზომა:</strong> ${escapeHtml(state.report.glassPartitionSize)}</p><p><strong>დასაკიდი კარის ზომა:</strong> ${escapeHtml(state.report.hingedDoorSize)}</p><p><strong>პანელის ფერი:</strong> ${escapeHtml(state.report.panelColor)}</p><p><strong>პანელი სადამდე კეთდება:</strong> ${escapeHtml(state.report.panelHeight)}</p><h3>დასაყენებლების სია</h3>${list(state.report.installables)}`)}
-      ${section("ნახაზის ახსნა", `<table><tbody>${sketchFields.map((key) => `<tr><th>${escapeHtml(labelForSketch(key))}</th><td>${escapeHtml(state.report.sketchExplanation[key])}</td></tr>`).join("")}</tbody></table>`)}
       ${section("დამატებითი სამუშაოები", list(state.report.extraWork))}
       ${section("შენიშვნები", list(state.report.workNotes))}
       ${section("საეჭვო / გადასამოწმებელი ადგილები", `<div class="check">${list(state.report.suspiciousItems)}</div>`)}
     `;
-}
-
-function labelForSketch(key) {
-  return {
-    door: "კარი",
-    wc: "WC",
-    window: "ფანჯარა",
-    showerTray: "დუშთასე",
-    fixedGlass: "ფიქსირებული შუშა",
-    movingGlass: "მოძრავი შუშა",
-    panelWalls: "პანელით დასაფარი კედლები"
-  }[key];
 }
 
 function escapeHtml(value) {
