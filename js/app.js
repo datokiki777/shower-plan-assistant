@@ -413,7 +413,7 @@ function buildPrintableReportContent() {
       <h1>Shower Plan Assistant</h1>
       <p>ქართული სამუშაო ანგარიში</p>
       ${section("კლიენტის მონაცემები", `<p><strong>კლიენტი:</strong> ${escapeHtml(state.report.clientName)}</p><p><strong>მისამართი:</strong> ${escapeHtml(state.report.address)}</p><p><strong>ტელეფონი:</strong> ${escapeHtml(state.report.phone)}</p>`)}
-      ${section("პაკეტი და დუშტასე", `<p><strong>პაკეტი:</strong> ${escapeHtml(state.report.packageType)}</p><p><strong>დუშტასე:</strong> ${escapeHtml(state.report.showerTraySize)}</p><p><strong>ანტისრიალი:</strong> ${escapeHtml(state.report.antiSlip)}</p>`)}
+      ${section("პაკეტი და დუშთასე", `<p><strong>პაკეტი:</strong> ${escapeHtml(state.report.packageType)}</p><p><strong>დუშთასე:</strong> ${escapeHtml(state.report.showerTraySize)}</p><p><strong>ანტირუჩი:</strong> ${escapeHtml(state.report.antiSlip)}</p>`)}
       ${section("მასალები", `<p><strong>შუშის ზომა:</strong> ${escapeHtml(state.report.glassPartitionSize)}</p><p><strong>დასაკიდი კარის ზომა:</strong> ${escapeHtml(state.report.hingedDoorSize)}</p><p><strong>პანელის ფერი:</strong> ${escapeHtml(state.report.panelColor)}</p><p><strong>პანელი სადამდე კეთდება:</strong> ${escapeHtml(state.report.panelHeight)}</p><h3>დასაყენებლების სია</h3>${list(state.report.installables)}`)}
       ${section("ნახაზის ახსნა", `<table><tbody>${sketchFields.map((key) => `<tr><th>${escapeHtml(labelForSketch(key))}</th><td>${escapeHtml(state.report.sketchExplanation[key])}</td></tr>`).join("")}</tbody></table>`)}
       ${section("დამატებითი სამუშაოები", list(state.report.extraWork))}
@@ -427,7 +427,7 @@ function labelForSketch(key) {
     door: "კარი",
     wc: "WC",
     window: "ფანჯარა",
-    showerTray: "დუშტასე",
+    showerTray: "დუშთასე",
     fixedGlass: "ფიქსირებული შუშა",
     movingGlass: "მოძრავი შუშა",
     panelWalls: "პანელით დასაფარი კედლები"
