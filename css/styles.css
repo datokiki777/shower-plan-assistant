@@ -302,6 +302,10 @@ textarea:focus {
   color: var(--danger);
 }
 
+.printable-report {
+  display: none;
+}
+
 @media (max-width: 980px) {
   .workspace,
   .report-grid {
@@ -334,5 +338,74 @@ textarea:focus {
 
   .price-row button {
     width: 100%;
+  }
+}
+
+@media print {
+  @page {
+    margin: 18mm;
+  }
+
+  body.is-printing-report {
+    background: #fff;
+  }
+
+  body.is-printing-report .app-shell {
+    display: none;
+  }
+
+  body.is-printing-report .printable-report {
+    display: block;
+    font-family: "Noto Sans Georgian", "Segoe UI", Arial, sans-serif;
+    color: #17211f;
+    line-height: 1.5;
+  }
+
+  .printable-report h1 {
+    margin: 0 0 6px;
+    font-size: 26px;
+  }
+
+  .printable-report h2 {
+    margin: 24px 0 8px;
+    font-size: 15px;
+    color: #0e5c56;
+    border-bottom: 1px solid #d9e1df;
+    padding-bottom: 5px;
+  }
+
+  .printable-report p {
+    margin: 4px 0;
+  }
+
+  .printable-report ul {
+    margin: 6px 0 0 20px;
+    padding: 0;
+  }
+
+  .printable-report table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+  }
+
+  .printable-report td,
+  .printable-report th {
+    border: 1px solid #d9e1df;
+    padding: 8px;
+    vertical-align: top;
+  }
+
+  .printable-report .meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 18px;
+    margin-top: 16px;
+  }
+
+  .printable-report .check {
+    background: #fff8e9;
+    border: 1px solid #e7c37e;
+    padding: 10px;
   }
 }

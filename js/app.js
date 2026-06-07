@@ -333,43 +333,35 @@ async function renderHistory() {
 
 function exportPdf() {
   syncReportFromForm();
-  const reportHtml = buildPrintableReport();
-  const printWindow = window.open("", "_blank", "noopener,noreferrer");
-  if (!printWindow) {
-    showAlert("ბრაუზერმა PDF export ფანჯარა დაბლოკა. დაუშვი popup და სცადე თავიდან.", "warn");
-    return;
-  }
-  printWindow.document.write(reportHtml);
-  printWindow.document.close();
-  printWindow.focus();
-  window.setTimeout(() => printWindow.print(), 350);
+  const previousReport = document.querySelector(".printable-report");
+  if (previousReport) previousReport.remove();
+
+  const report = document.createElement("article");
+  report.className = "printable-report";
+  report.innerHTML = buildPrintableReportContent();
+  document.body.appendChild(report);
+  document.body.classList.add("is-printing-report");
+
+  const cleanup = () => {
+    document.body.classList.remove("is-printing-report");
+    report.remove();
+    window.removeEventListener("afterprint", cleanup);
+  };
+
+  window.addEventListener("afterprint", cleanup);
+  window.setTimeout(() => {
+    window.print();
+    window.setTimeout(cleanup, 1200);
+  }, 100);
 }
 
-function buildPrintableReport() {
+function buildPrintableReportContent() {
   const priceRows = state.report.prices
     .map((price) => `<tr><td>${escapeHtml(price.label)}</td><td>${escapeHtml(price.amount)}</td></tr>`)
     .join("");
   const section = (title, body) => `<section><h2>${escapeHtml(title)}</h2>${body}</section>`;
   const list = (items) => `<ul>${(items?.length ? items : [UNKNOWN]).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
-  return `<!doctype html>
-    <html lang="ka">
-    <head>
-      <meta charset="utf-8">
-      <title>${escapeHtml(state.report.clientName || "Shower report")}</title>
-      <style>
-        @page { margin: 18mm; }
-        body { font-family: "Noto Sans Georgian", "Segoe UI", Arial, sans-serif; color: #17211f; line-height: 1.5; }
-        h1 { margin: 0 0 6px; font-size: 26px; }
-        h2 { margin: 24px 0 8px; font-size: 15px; color: #0e5c56; border-bottom: 1px solid #d9e1df; padding-bottom: 5px; }
-        p { margin: 4px 0; }
-        ul { margin: 6px 0 0 20px; padding: 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-        td, th { border: 1px solid #d9e1df; padding: 8px; vertical-align: top; }
-        .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; margin-top: 16px; }
-        .check { background: #fff8e9; border: 1px solid #e7c37e; padding: 10px; }
-      </style>
-    </head>
-    <body>
+  return `
       <h1>Shower Plan Assistant</h1>
       <p>ქართული სამუშაო ანგარიში</p>
       <div class="meta">
@@ -385,8 +377,7 @@ function buildPrintableReport() {
       ${section("ფასების ცხრილი", `<table><thead><tr><th>პოზიცია</th><th>ფასი</th></tr></thead><tbody>${priceRows}<tr><th>ჯამი</th><th>${escapeHtml(state.report.totalPrice)}</th></tr></tbody></table>`)}
       ${section("შენიშვნები", list(state.report.workNotes))}
       ${section("საეჭვო / გადასამოწმებელი ადგილები", `<div class="check">${list(state.report.suspiciousItems)}</div>`)}
-    </body>
-    </html>`;
+    `;
 }
 
 function labelForSketch(key) {
