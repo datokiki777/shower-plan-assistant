@@ -136,8 +136,36 @@ function fileToContent(file) {
   };
 }
 
-function offerPrompt() {
-  return "Analyze the BADELIX document by fixed page logic. Page 1: extract only client first/last name, address exactly as written, and telephone number if readable. Do not return order number or date. For address, inspect every uploaded page because the same address can appear in several places. Cross-check street, postal code, and city across all pages before returning it. Do not guess city names from handwriting: for example, if the document says Weiltingen, return Weiltingen and do not change it to Wiptingen. If the city or any letter is unclear after comparing all pages, return 'გადასამოწმებელია' for the unclear part. Page 2: extract selected system package as S or M, shower tray dimensions, and whether Antirutsch/anti-slip is selected. antiSlip must be exactly 'კი' when selected/checked and exactly 'არა' when not selected/unchecked; if the checkbox state cannot be read, return 'გადასამოწმებელია'. Do not create a general work-description paragraph. Page 3: extract selected glass partition size, selected hinged door/swing element size, BADELIX panel color such as UBEDA, and selected faucet/shower items under BADELIX Armaturen. Call that list 'დასაყენებლების სია'. For installables, keep the original German product names exactly as written/selected, for example Mischbatterie, Thermomischbatterie, Brauseset, Regendusche. Do not translate installables into Georgian and do not include item prices. Extract Zusatzarbeiten as 'დამატებითი სამუშაო' and translate handwritten work items into Georgian, without prices unless the price is necessary to identify the handwritten line. Use this construction glossary for handwritten German: Vorsprung = კედლის უჯრა; Bauschutt = სამშენებლო ნარჩენები; Boden fullen, Boden füllen, Boden auffullen, or Boden auffüllen = იატაკის ამოვსება. Page 4 panel height rule is strict: there are exactly three checkbox options that matter. If 'Verkleidung bis Wannenrand' is checked, panelHeight must be 'ძველი ვანის კანტამდე'. If 'Verkleidung bis Fliesenkante' is checked, panelHeight must be 'კაფელის კანტამდე'. If 'Verkleidung deckenhoch' is checked, panelHeight must be 'ჭერამდე'. The separate 'Deckenhöhe ___ cm' value is only the room ceiling height from floor to ceiling and must NEVER be used as panelHeight and must not override the three checkboxes.";
+function parseGlossary(value) {
+  try {
+    const parsed = JSON.parse(value || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((item) => ({
+        de: String(item?.de || "").trim(),
+        ka: String(item?.ka || "").trim()
+      }))
+      .filter((item) => item.de && item.ka)
+      .slice(0, 80);
+  } catch {
+    return [];
+  }
+}
+
+function glossaryText(glossary) {
+  const base = [
+    "Vorsprung = კედლის უჯრა",
+    "Bauschutt = სამშენებლო ნარჩენები",
+    "Boden fullen / Boden füllen / Boden auffullen / Boden auffüllen = იატაკის ამოვსება",
+    "Griff = სახელური",
+    "Haltegriff = სახელური"
+  ];
+  const custom = glossary.map((item) => `${item.de} = ${item.ka}`);
+  return [...base, ...custom].join("; ");
+}
+
+function offerPrompt(glossary = []) {
+  return `Analyze the BADELIX document by fixed page logic. Page 1: extract only client first/last name, address exactly as written, and telephone number if readable. Do not return order number or date. For address, inspect every uploaded page because the same address can appear in several places. Cross-check street, postal code, and city across all pages before returning it. Do not guess city names from handwriting: for example, if the document says Weiltingen, return Weiltingen and do not change it to Wiptingen. If the city or any letter is unclear after comparing all pages, return 'გადასამოწმებელია' for the unclear part. Page 2: extract selected system package as S or M, shower tray dimensions, and whether Antirutsch/anti-slip is selected. antiSlip must be exactly 'კი' when selected/checked and exactly 'არა' when not selected/unchecked; if the checkbox state cannot be read, return 'გადასამოწმებელია'. Do not create a general work-description paragraph. Page 3: extract selected glass partition size, selected hinged door/swing element size, BADELIX panel color such as UBEDA. Under the heading 'BADELIX Armaturen' there are exactly four checkbox options: Mischbatterie, Thermomischbatterie, Brauseset, Regendusche. For installables, return ONLY the options whose checkbox is visibly selected/checked. Keep the original German product names exactly as written. Do not translate installables into Georgian and do not include item prices. If none of the four BADELIX Armaturen options are selected, return an empty installables array. Never include an unchecked option. Extract extraWork ONLY from the handwritten lines inside the 'Zusatzarbeiten (mit Aufpreis)' area. Do not use notes from other areas for extraWork. Translate those handwritten extra work lines into Georgian, without prices unless the price is necessary to identify the line. Use this construction glossary for handwritten German: ${glossaryText(glossary)}. Page 4 panel height rule is strict: there are exactly three checkbox options that matter. If 'Verkleidung bis Wannenrand' is checked, panelHeight must be 'ძველი ვანის კანტამდე'. If 'Verkleidung bis Fliesenkante' is checked, panelHeight must be 'კაფელის კანტამდე'. If 'Verkleidung deckenhoch' is checked, panelHeight must be 'ჭერამდე'. The separate 'Deckenhöhe ___ cm' value is only the room ceiling height from floor to ceiling and must NEVER be used as panelHeight and must not override the three checkboxes.`;
 }
 
 app.post("/api/analyze", upload.array("files", 8), async (req, res) => {
@@ -148,6 +176,7 @@ app.post("/api/analyze", upload.array("files", 8), async (req, res) => {
 
     const files = req.files || [];
     if (!files.length) return res.status(400).json({ error: "Upload at least one PDF or image." });
+    const glossary = parseGlossary(req.body?.glossary);
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const model = process.env.OPENAI_MODEL || "gpt-4.1";
@@ -168,7 +197,7 @@ app.post("/api/analyze", upload.array("files", 8), async (req, res) => {
         {
           role: "user",
           content: [
-            { type: "input_text", text: offerPrompt() },
+            { type: "input_text", text: offerPrompt(glossary) },
             ...files.map(fileToContent)
           ]
         }

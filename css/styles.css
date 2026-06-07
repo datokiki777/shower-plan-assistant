@@ -180,7 +180,8 @@ button:disabled { opacity: 0.55; cursor: wait; }
   margin-bottom: 0;
 }
 
-.usage-meter {
+.usage-meter,
+.term-box {
   margin-top: 14px;
   padding: 12px;
   border: 1px solid var(--line);
@@ -218,6 +219,39 @@ button:disabled { opacity: 0.55; cursor: wait; }
 
 .usage-meter small {
   color: var(--muted);
+}
+
+.term-box {
+  background: #fffaf0;
+  border-color: #e3d2ad;
+}
+
+.term-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.term-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.term-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 8px;
+  border: 1px solid #e5d7b8;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 12px;
+}
+
+.term-item button {
+  padding: 2px 7px;
 }
 
 .file-chip,
@@ -475,57 +509,59 @@ select:focus {
 
   .printable-report .report-section {
     break-inside: avoid;
-    margin: 12px 0;
-    padding: 10px 12px;
+    margin: 7px 0;
+    padding: 8px 10px;
     border: 1px solid #d9e1df;
     border-radius: 8px;
   }
 
   .printable-report .report-section:nth-of-type(1) {
-    background: #f5fbf8;
-    border-color: #c7ddd4;
+    background: #dff2eb;
+    border-color: #9ec8bb;
   }
 
   .printable-report .report-section:nth-of-type(2) {
-    background: #fff9ed;
-    border-color: #ead5a5;
+    background: #ffedc2;
+    border-color: #d7ae50;
   }
 
   .printable-report .report-section:nth-of-type(3) {
-    background: #f4f9ff;
-    border-color: #c7d9eb;
+    background: #dceeff;
+    border-color: #9bbfe0;
   }
 
   .printable-report .report-section:nth-of-type(4) {
-    background: #fff6f3;
-    border-color: #edcfc4;
+    background: #ffe2d8;
+    border-color: #df9e88;
   }
 
   .printable-report .report-section:nth-of-type(5) {
-    background: #f8f5ff;
-    border-color: #d8cdea;
+    background: #ece3ff;
+    border-color: #b7a1dd;
   }
 
   .printable-report h1 {
-    margin: 0 0 6px;
-    font-size: 26px;
+    margin: 0 0 4px;
+    font-size: 20px;
   }
 
   .printable-report h2 {
-    margin: 24px 0 8px;
-    font-size: 15px;
+    margin: 0 0 5px;
+    font-size: 13px;
     color: #0e5c56;
     border-bottom: 1px solid #d9e1df;
-    padding-bottom: 5px;
+    padding-bottom: 3px;
   }
 
   .printable-report p {
-    margin: 4px 0;
+    margin: 2px 0;
+    font-size: 11.5px;
   }
 
   .printable-report ul {
-    margin: 6px 0 0 20px;
+    margin: 4px 0 0 16px;
     padding: 0;
+    font-size: 11.5px;
   }
 
   .printable-report table {

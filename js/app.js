@@ -1,6 +1,7 @@
 const UNKNOWN = "გადასამოწმებელია";
 const DB_NAME = "shower-plan-assistant";
 const STORE = "reports";
+const TERM_STORE = "showerPlanTerms";
 
 const fields = [
   "clientName",
@@ -44,6 +45,11 @@ const els = {
   connectionStatus: $("#connectionStatus"),
   apiBaseInput: $("#apiBaseInput"),
   saveApiBaseBtn: $("#saveApiBaseBtn"),
+  termGermanInput: $("#termGermanInput"),
+  termGeorgianInput: $("#termGeorgianInput"),
+  addTermBtn: $("#addTermBtn"),
+  clearTermsBtn: $("#clearTermsBtn"),
+  termList: $("#termList"),
   usagePercent: $("#usagePercent"),
   usageBar: $("#usageBar"),
   usageText: $("#usageText")
@@ -103,6 +109,56 @@ function getUsageState() {
 
 function saveUsageState(usage) {
   localStorage.setItem(currentUsageKey(), JSON.stringify(usage));
+}
+
+function getTerms() {
+  try {
+    return JSON.parse(localStorage.getItem(TERM_STORE)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveTerms(terms) {
+  localStorage.setItem(TERM_STORE, JSON.stringify(terms));
+}
+
+function renderTerms() {
+  if (!els.termList) return;
+  const terms = getTerms();
+  if (!terms.length) {
+    els.termList.innerHTML = '<div class="term-item"><span>ჯერ ტერმინი არ არის დამატებული</span></div>';
+    return;
+  }
+  els.termList.innerHTML = "";
+  terms.forEach((term, index) => {
+    const item = document.createElement("div");
+    item.className = "term-item";
+    item.innerHTML = `<span><strong>${escapeHtml(term.de)}</strong> = ${escapeHtml(term.ka)}</span><button type="button">×</button>`;
+    item.querySelector("button").addEventListener("click", () => {
+      const next = getTerms();
+      next.splice(index, 1);
+      saveTerms(next);
+      renderTerms();
+    });
+    els.termList.appendChild(item);
+  });
+}
+
+function addTerm() {
+  const de = els.termGermanInput?.value.trim();
+  const ka = els.termGeorgianInput?.value.trim();
+  if (!de || !ka) {
+    showAlert("ტერმინისთვის გერმანულიც და ქართულიც ჩაწერე.", "warn");
+    return;
+  }
+  const terms = getTerms().filter((term) => term.de.toLowerCase() !== de.toLowerCase());
+  terms.push({ de, ka });
+  saveTerms(terms);
+  els.termGermanInput.value = "";
+  els.termGeorgianInput.value = "";
+  renderTerms();
+  showAlert("ტერმინი დაემატა ლექსიკონში.", "ok");
 }
 
 function addUsageEstimate(usage) {
@@ -228,8 +284,10 @@ function normalizeReport(payload) {
   report.createdAt = payload.createdAt || new Date().toISOString();
   report.sourceFiles = payload.sourceFiles || state.files.map((file) => file.name);
   fields.forEach((name) => {
-    if (Array.isArray(createEmptyReport()[name]) && !Array.isArray(report[name])) report[name] = textToArray(report[name]);
-    if (!report[name] || (Array.isArray(report[name]) && report[name].length === 0)) report[name] = Array.isArray(createEmptyReport()[name]) ? [UNKNOWN] : UNKNOWN;
+    const isArrayField = Array.isArray(createEmptyReport()[name]);
+    if (isArrayField && !Array.isArray(report[name])) report[name] = textToArray(report[name]);
+    if (!isArrayField && !report[name]) report[name] = UNKNOWN;
+    if (isArrayField && !Array.isArray(report[name])) report[name] = [];
   });
   return report;
 }
@@ -248,6 +306,7 @@ async function analyzeFiles() {
   try {
     const formData = new FormData();
     state.files.forEach((file) => formData.append("files", file));
+    formData.append("glossary", JSON.stringify(getTerms()));
     const response = await fetch(apiUrl("/api/analyze"), { method: "POST", body: formData });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || "ანალიზი ვერ შესრულდა");
@@ -398,40 +457,40 @@ function buildStandaloneReportDocument() {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Shower Plan Assistant PDF</title>
   <style>
-    @page { margin: 18mm; }
+    @page { margin: 10mm; }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      padding: 18px;
+      padding: 10px;
       background: #fff;
       color: #17211f;
       font-family: "Noto Sans Georgian", "Segoe UI", Arial, sans-serif;
-      line-height: 1.5;
+      line-height: 1.32;
     }
     .printable-report { display: block; width: 100%; }
     .report-section {
       break-inside: avoid;
-      margin: 12px 0;
-      padding: 10px 12px;
+      margin: 6px 0;
+      padding: 7px 9px;
       border: 1px solid #d9e1df;
       border-radius: 8px;
     }
-    .report-section:nth-of-type(1) { background: #f5fbf8; border-color: #c7ddd4; }
-    .report-section:nth-of-type(2) { background: #fff9ed; border-color: #ead5a5; }
-    .report-section:nth-of-type(3) { background: #f4f9ff; border-color: #c7d9eb; }
-    .report-section:nth-of-type(4) { background: #fff6f3; border-color: #edcfc4; }
-    .report-section:nth-of-type(5) { background: #f8f5ff; border-color: #d8cdea; }
-    h1 { margin: 0 0 6px; font-size: 26px; }
+    .report-section:nth-of-type(1) { background: #dff2eb; border-color: #9ec8bb; }
+    .report-section:nth-of-type(2) { background: #ffedc2; border-color: #d7ae50; }
+    .report-section:nth-of-type(3) { background: #dceeff; border-color: #9bbfe0; }
+    .report-section:nth-of-type(4) { background: #ffe2d8; border-color: #df9e88; }
+    .report-section:nth-of-type(5) { background: #ece3ff; border-color: #b7a1dd; }
+    h1 { margin: 0 0 3px; font-size: 18px; }
     h2 {
-      margin: 24px 0 8px;
-      font-size: 15px;
+      margin: 0 0 4px;
+      font-size: 12px;
       color: #0e5c56;
       border-bottom: 1px solid #d9e1df;
-      padding-bottom: 5px;
+      padding-bottom: 3px;
     }
-    h3 { margin: 12px 0 6px; font-size: 14px; }
-    p { margin: 4px 0; }
-    ul { margin: 6px 0 0 20px; padding: 0; }
+    h3 { margin: 6px 0 3px; font-size: 11px; }
+    p { margin: 1px 0; font-size: 10.5px; }
+    ul { margin: 3px 0 0 14px; padding: 0; font-size: 10.5px; }
     .check { background: #fff8e9; border: 1px solid #e7c37e; padding: 10px; }
     .print-actions {
       position: sticky;
@@ -480,7 +539,7 @@ function printStandaloneReport() {
 
 function buildPrintableReportContent() {
   const section = (title, body) => `<section class="report-section"><h2>${escapeHtml(title)}</h2>${body}</section>`;
-  const list = (items) => `<ul>${(items?.length ? items : [UNKNOWN]).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
+  const list = (items) => (items?.length ? `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "");
   return `
       <h1>Shower Plan Assistant</h1>
       <p>ქართული სამუშაო ანგარიში</p>
@@ -608,6 +667,17 @@ function bindEvents() {
     await renderHistory();
     showAlert("ისტორია წაიშალა.", "info");
   });
+  els.addTermBtn?.addEventListener("click", addTerm);
+  els.clearTermsBtn?.addEventListener("click", () => {
+    saveTerms([]);
+    renderTerms();
+    showAlert("ტერმინების ლექსიკონი გასუფთავდა.", "info");
+  });
+  [els.termGermanInput, els.termGeorgianInput].forEach((input) => {
+    input?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") addTerm();
+    });
+  });
   els.saveApiBaseBtn.addEventListener("click", async () => {
     const value = normalizeApiBase(els.apiBaseInput.value);
     if (value) {
@@ -626,6 +696,7 @@ async function init() {
   syncFormFromReport();
   await renderHistory();
   renderUsageMeter();
+  renderTerms();
   await checkBackend();
   registerServiceWorker();
 }
