@@ -414,6 +414,53 @@ async function checkBackend() {
   }
 }
 
+function showUpdateToast() {
+  let toast = document.querySelector(".update-toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.className = "update-toast";
+    toast.innerHTML = `
+      <div>
+        <strong>ახალი ვერსია მზადაა</strong>
+        <span>განაახლე app, რომ ბოლო ცვლილებები ჩაიტვირთოს.</span>
+      </div>
+      <button class="primary" type="button">განახლება</button>
+    `;
+    toast.querySelector("button").addEventListener("click", () => window.location.reload());
+    document.body.appendChild(toast);
+  }
+  toast.classList.add("is-visible");
+}
+
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+
+  let updateSeen = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (updateSeen) return;
+    updateSeen = true;
+    showUpdateToast();
+  });
+
+  navigator.serviceWorker
+    .register("service-worker.js")
+    .then((registration) => {
+      registration.addEventListener("updatefound", () => {
+        const worker = registration.installing;
+        if (!worker) return;
+        worker.addEventListener("statechange", () => {
+          if (worker.state === "installed" && navigator.serviceWorker.controller) {
+            worker.postMessage({ type: "SKIP_WAITING" });
+            showUpdateToast();
+          }
+        });
+      });
+
+      window.setInterval(() => registration.update(), 60 * 60 * 1000);
+    })
+    .catch(() => {});
+}
+
 function bindEvents() {
   els.pickFilesBtn.addEventListener("click", () => els.fileInput.click());
   els.fileInput.addEventListener("change", () => {
@@ -476,9 +523,7 @@ async function init() {
   syncFormFromReport();
   await renderHistory();
   await checkBackend();
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js").catch(() => {});
-  }
+  registerServiceWorker();
 }
 
 init();
