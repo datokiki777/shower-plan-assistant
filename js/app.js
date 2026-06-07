@@ -362,6 +362,11 @@ async function renderHistory() {
 
 function exportPdf() {
   syncReportFromForm();
+  if (isAndroidDevice()) {
+    printStandaloneReport();
+    return;
+  }
+
   const previousReport = document.querySelector(".printable-report");
   if (previousReport) previousReport.remove();
 
@@ -382,6 +387,86 @@ function exportPdf() {
     window.print();
     window.setTimeout(cleanup, 2500);
   }, 250);
+}
+
+function isAndroidDevice() {
+  return /Android/i.test(navigator.userAgent || "");
+}
+
+function buildStandaloneReportDocument() {
+  return `<!doctype html>
+<html lang="ka">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shower Plan Assistant PDF</title>
+  <style>
+    @page { margin: 18mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 18px;
+      background: #fff;
+      color: #17211f;
+      font-family: "Noto Sans Georgian", "Segoe UI", Arial, sans-serif;
+      line-height: 1.5;
+    }
+    .printable-report { display: block; width: 100%; }
+    h1 { margin: 0 0 6px; font-size: 26px; }
+    h2 {
+      margin: 24px 0 8px;
+      font-size: 15px;
+      color: #0e5c56;
+      border-bottom: 1px solid #d9e1df;
+      padding-bottom: 5px;
+    }
+    h3 { margin: 12px 0 6px; font-size: 14px; }
+    p { margin: 4px 0; }
+    ul { margin: 6px 0 0 20px; padding: 0; }
+    .check { background: #fff8e9; border: 1px solid #e7c37e; padding: 10px; }
+    .print-actions {
+      position: sticky;
+      top: 0;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      padding: 0 0 12px;
+      background: #fff;
+    }
+    .print-actions button {
+      border: 1px solid #cfd9d6;
+      border-radius: 8px;
+      background: #0e5c56;
+      color: #fff;
+      padding: 10px 14px;
+      font: inherit;
+      font-weight: 800;
+    }
+    @media print {
+      body { padding: 0; }
+      .print-actions { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-actions"><button onclick="window.print()">Save as PDF</button></div>
+  <article class="printable-report">${buildPrintableReportContent()}</article>
+  <script>
+    window.addEventListener("load", () => setTimeout(() => window.print(), 600));
+  <\/script>
+</body>
+</html>`;
+}
+
+function printStandaloneReport() {
+  const popup = window.open("", "_blank");
+  if (!popup) {
+    showAlert("Android-ზე PDF-სთვის popup გაიხსნას უნდა. ბრაუზერში popup დაუშვი ან სცადე თავიდან.", "warn");
+    return;
+  }
+  popup.document.open();
+  popup.document.write(buildStandaloneReportDocument());
+  popup.document.close();
 }
 
 function buildPrintableReportContent() {

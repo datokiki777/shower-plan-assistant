@@ -287,6 +287,36 @@ button:disabled { opacity: 0.55; cursor: wait; }
   box-shadow: none;
 }
 
+.report-grid .form-card:nth-of-type(1) {
+  background: #fbfdfb;
+  border-color: #cfe0da;
+}
+
+.report-grid .form-card:nth-of-type(2) {
+  background: #fffaf0;
+  border-color: #edd9a8;
+}
+
+.report-grid .form-card:nth-of-type(3) {
+  background: #f6fbff;
+  border-color: #c9ddec;
+}
+
+.report-grid .form-card:nth-of-type(4) {
+  background: #fcf8ff;
+  border-color: #decceb;
+}
+
+.report-grid .form-card:nth-of-type(5) {
+  background: #fff7f4;
+  border-color: #edcfc4;
+}
+
+.report-grid .form-card:nth-of-type(6) {
+  background: #f7fbf3;
+  border-color: #cfe2bf;
+}
+
 .form-card h3 {
   font-size: 17px;
   margin-bottom: 12px;
