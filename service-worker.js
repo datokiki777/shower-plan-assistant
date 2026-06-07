@@ -6,7 +6,7 @@ const ASSETS = [
   "./config.js",
   "./css/styles.css",
   "./js/app.js",
-  "./icons/favicon.ico",
+  "./icons/favicon.png",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
 ];
