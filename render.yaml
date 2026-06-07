@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: shower-plan-assistant-api
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: OPENAI_MODEL
+        value: gpt-4.1
+      - key: API_ORIGINS
+        value: https://shower.dbuilder.eu,http://localhost:4177,http://127.0.0.1:4177
+      - key: OPENAI_API_KEY
+        sync: false
