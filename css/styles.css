@@ -473,6 +473,39 @@ select:focus {
     line-height: 1.5;
   }
 
+  .printable-report .report-section {
+    break-inside: avoid;
+    margin: 12px 0;
+    padding: 10px 12px;
+    border: 1px solid #d9e1df;
+    border-radius: 8px;
+  }
+
+  .printable-report .report-section:nth-of-type(1) {
+    background: #f5fbf8;
+    border-color: #c7ddd4;
+  }
+
+  .printable-report .report-section:nth-of-type(2) {
+    background: #fff9ed;
+    border-color: #ead5a5;
+  }
+
+  .printable-report .report-section:nth-of-type(3) {
+    background: #f4f9ff;
+    border-color: #c7d9eb;
+  }
+
+  .printable-report .report-section:nth-of-type(4) {
+    background: #fff6f3;
+    border-color: #edcfc4;
+  }
+
+  .printable-report .report-section:nth-of-type(5) {
+    background: #f8f5ff;
+    border-color: #d8cdea;
+  }
+
   .printable-report h1 {
     margin: 0 0 6px;
     font-size: 26px;

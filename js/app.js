@@ -15,8 +15,7 @@ const fields = [
   "panelHeight",
   "installables",
   "extraWork",
-  "workNotes",
-  "suspiciousItems"
+  "workNotes"
 ];
 
 const state = {
@@ -85,7 +84,6 @@ function createEmptyReport() {
     installables: [],
     extraWork: [],
     workNotes: [],
-    suspiciousItems: [UNKNOWN],
     sourceNotes: []
   };
 }
@@ -284,8 +282,7 @@ function loadDemo() {
       panelHeight: UNKNOWN,
       installables: ["დასაყენებლების სია: გადასამოწმებელია"],
       extraWork: ["დამატებითი სამუშაოები: გადასამოწმებელია"],
-      workNotes: ["ხელნაწერი ან skizze სრულად უნდა გადამოწმდეს."],
-      suspiciousItems: ["ზომები", "ხელნაწერი შენიშვნები"]
+      workNotes: ["ხელნაწერი ან skizze სრულად უნდა გადამოწმდეს."]
     }
   });
   syncFormFromReport();
@@ -412,6 +409,18 @@ function buildStandaloneReportDocument() {
       line-height: 1.5;
     }
     .printable-report { display: block; width: 100%; }
+    .report-section {
+      break-inside: avoid;
+      margin: 12px 0;
+      padding: 10px 12px;
+      border: 1px solid #d9e1df;
+      border-radius: 8px;
+    }
+    .report-section:nth-of-type(1) { background: #f5fbf8; border-color: #c7ddd4; }
+    .report-section:nth-of-type(2) { background: #fff9ed; border-color: #ead5a5; }
+    .report-section:nth-of-type(3) { background: #f4f9ff; border-color: #c7d9eb; }
+    .report-section:nth-of-type(4) { background: #fff6f3; border-color: #edcfc4; }
+    .report-section:nth-of-type(5) { background: #f8f5ff; border-color: #d8cdea; }
     h1 { margin: 0 0 6px; font-size: 26px; }
     h2 {
       margin: 24px 0 8px;
@@ -470,7 +479,7 @@ function printStandaloneReport() {
 }
 
 function buildPrintableReportContent() {
-  const section = (title, body) => `<section><h2>${escapeHtml(title)}</h2>${body}</section>`;
+  const section = (title, body) => `<section class="report-section"><h2>${escapeHtml(title)}</h2>${body}</section>`;
   const list = (items) => `<ul>${(items?.length ? items : [UNKNOWN]).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
   return `
       <h1>Shower Plan Assistant</h1>
@@ -480,7 +489,6 @@ function buildPrintableReportContent() {
       ${section("მასალები", `<p><strong>შუშის ზომა:</strong> ${escapeHtml(state.report.glassPartitionSize)}</p><p><strong>დასაკიდი კარის ზომა:</strong> ${escapeHtml(state.report.hingedDoorSize)}</p><p><strong>პანელის ფერი:</strong> ${escapeHtml(state.report.panelColor)}</p><p><strong>პანელი სადამდე კეთდება:</strong> ${escapeHtml(state.report.panelHeight)}</p><h3>დასაყენებლების სია</h3>${list(state.report.installables)}`)}
       ${section("დამატებითი სამუშაოები", list(state.report.extraWork))}
       ${section("შენიშვნები", list(state.report.workNotes))}
-      ${section("საეჭვო / გადასამოწმებელი ადგილები", `<div class="check">${list(state.report.suspiciousItems)}</div>`)}
     `;
 }
 

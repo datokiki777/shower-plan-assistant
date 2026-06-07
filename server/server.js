@@ -49,7 +49,6 @@ const emptyAnalysis = () => ({
   installables: [],
   extraWork: [],
   workNotes: [],
-  suspiciousItems: [UNKNOWN],
   sourceNotes: [],
 });
 
@@ -72,7 +71,6 @@ const analysisSchema = {
       installables: { type: "array", items: { type: "string" } },
       extraWork: { type: "array", items: { type: "string" } },
       workNotes: { type: "array", items: { type: "string" } },
-      suspiciousItems: { type: "array", items: { type: "string" } },
       sourceNotes: { type: "array", items: { type: "string" } }
     },
     required: [
@@ -89,7 +87,6 @@ const analysisSchema = {
       "installables",
       "extraWork",
       "workNotes",
-      "suspiciousItems",
       "sourceNotes"
     ]
   },
@@ -101,9 +98,6 @@ function normalizeAnalysis(value) {
   const merged = { ...base, ...value };
   for (const key of Object.keys(base)) {
     if (merged[key] === null || merged[key] === undefined || merged[key] === "") merged[key] = UNKNOWN;
-  }
-  if (!Array.isArray(merged.suspiciousItems) || merged.suspiciousItems.length === 0) {
-    merged.suspiciousItems = [UNKNOWN];
   }
   return merged;
 }
@@ -143,7 +137,7 @@ function fileToContent(file) {
 }
 
 function offerPrompt() {
-  return "Analyze the BADELIX document by fixed page logic. Page 1: extract only client first/last name, address exactly as written, and telephone number if readable. Do not return order number or date. For address, inspect every uploaded page because the same address can appear in several places. Cross-check street, postal code, and city across all pages before returning it. Do not guess city names from handwriting: for example, if the document says Weiltingen, return Weiltingen and do not change it to Wiptingen. If the city or any letter is unclear after comparing all pages, return 'გადასამოწმებელია' for the unclear part. Page 2: extract selected system package as S or M, shower tray dimensions, and whether Antirutsch/anti-slip is selected. Do not create a general work-description paragraph. Page 3: extract selected glass partition size, selected hinged door/swing element size, BADELIX panel color such as UBEDA, and selected faucet/shower items under BADELIX Armaturen. Call that list 'დასაყენებლების სია'. Faucet options are Mischbatterie and Thermomischbatterie. Hand shower options are Brauseset and Regendusche. Do not include item prices in installables. Extract Zusatzarbeiten as 'დამატებითი სამუშაო' and translate handwritten work items into Georgian, without prices unless the price is necessary to identify the handwritten line. Use this construction glossary for handwritten German: Vorsprung = კედლის უჯრა; Bauschutt = სამშენებლო ნარჩენები; Boden fullen, Boden füllen, Boden auffullen, or Boden auffüllen = იატაკის ამოვსება. Page 4 panel height rule is strict: there are exactly three checkbox options that matter. If 'Verkleidung bis Wannenrand' is checked, panelHeight must be 'ძველი ვანის კანტამდე'. If 'Verkleidung bis Fliesenkante' is checked, panelHeight must be 'კაფელის კანტამდე'. If 'Verkleidung deckenhoch' is checked, panelHeight must be 'ჭერამდე'. The separate 'Deckenhöhe ___ cm' value is only the room ceiling height from floor to ceiling and must NEVER be used as panelHeight and must not override the three checkboxes. Also include suspicious/unclear items.";
+  return "Analyze the BADELIX document by fixed page logic. Page 1: extract only client first/last name, address exactly as written, and telephone number if readable. Do not return order number or date. For address, inspect every uploaded page because the same address can appear in several places. Cross-check street, postal code, and city across all pages before returning it. Do not guess city names from handwriting: for example, if the document says Weiltingen, return Weiltingen and do not change it to Wiptingen. If the city or any letter is unclear after comparing all pages, return 'გადასამოწმებელია' for the unclear part. Page 2: extract selected system package as S or M, shower tray dimensions, and whether Antirutsch/anti-slip is selected. antiSlip must be exactly 'კი' when selected/checked and exactly 'არა' when not selected/unchecked; if the checkbox state cannot be read, return 'გადასამოწმებელია'. Do not create a general work-description paragraph. Page 3: extract selected glass partition size, selected hinged door/swing element size, BADELIX panel color such as UBEDA, and selected faucet/shower items under BADELIX Armaturen. Call that list 'დასაყენებლების სია'. For installables, keep the original German product names exactly as written/selected, for example Mischbatterie, Thermomischbatterie, Brauseset, Regendusche. Do not translate installables into Georgian and do not include item prices. Extract Zusatzarbeiten as 'დამატებითი სამუშაო' and translate handwritten work items into Georgian, without prices unless the price is necessary to identify the handwritten line. Use this construction glossary for handwritten German: Vorsprung = კედლის უჯრა; Bauschutt = სამშენებლო ნარჩენები; Boden fullen, Boden füllen, Boden auffullen, or Boden auffüllen = იატაკის ამოვსება. Page 4 panel height rule is strict: there are exactly three checkbox options that matter. If 'Verkleidung bis Wannenrand' is checked, panelHeight must be 'ძველი ვანის კანტამდე'. If 'Verkleidung bis Fliesenkante' is checked, panelHeight must be 'კაფელის კანტამდე'. If 'Verkleidung deckenhoch' is checked, panelHeight must be 'ჭერამდე'. The separate 'Deckenhöhe ___ cm' value is only the room ceiling height from floor to ceiling and must NEVER be used as panelHeight and must not override the three checkboxes.";
 }
 
 app.post("/api/analyze", upload.array("files", 8), async (req, res) => {
@@ -160,6 +154,7 @@ app.post("/api/analyze", upload.array("files", 8), async (req, res) => {
 
     const response = await client.responses.create({
       model,
+      temperature: 0,
       input: [
         {
           role: "developer",
