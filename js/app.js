@@ -94,6 +94,8 @@ function createEmptyReport() {
     suspiciousItems: [UNKNOWN],
     sourceNotes: [],
     loadingListTitle: UNKNOWN,
+    loadingTableColumns: [],
+    loadingTableRows: [],
     loadingRows: [],
     panelTotals: []
   };
@@ -270,8 +272,24 @@ function renderDocumentMode() {
 
 function renderLoadingListView() {
   const rows = Array.isArray(state.report.loadingRows) ? state.report.loadingRows : [];
+  const tableColumns = Array.isArray(state.report.loadingTableColumns) ? state.report.loadingTableColumns : [];
+  const tableRows = Array.isArray(state.report.loadingTableRows) ? state.report.loadingTableRows : [];
   const totals = Array.isArray(state.report.panelTotals) ? state.report.panelTotals : [];
-  const rowHtml = rows.length
+  const sourceTableHtml = tableRows.length
+    ? `
+      <div class="table-wrap">
+        <table class="loading-table">
+          <thead>
+            <tr>${(tableColumns.length ? tableColumns : ["დატვირთვის სია"]).map((column) => `<th>${escapeHtml(column)}</th>`).join("")}</tr>
+          </thead>
+          <tbody>
+            ${tableRows.map((row) => `<tr>${(row.cells || [UNKNOWN]).map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    `
+    : "";
+  const rowHtml = !tableRows.length && rows.length
     ? rows.map((row, index) => `
         <tr>
           <td>${index + 1}</td>
@@ -288,7 +306,7 @@ function renderLoadingListView() {
   els.loadingListView.innerHTML = `
     <section class="loading-list-card">
       <h3>${escapeHtml(state.report.loadingListTitle || "დატვირთვის სია")}</h3>
-      <div class="table-wrap">
+      ${sourceTableHtml || `<div class="table-wrap">
         <table class="loading-table">
           <thead>
             <tr>
@@ -301,7 +319,7 @@ function renderLoadingListView() {
           </thead>
           <tbody>${rowHtml}</tbody>
         </table>
-      </div>
+      </div>`}
     </section>
     <section class="loading-list-card">
       <h3>პანელების ჯამი ფერის მიხედვით</h3>
@@ -352,6 +370,8 @@ function loadDemo() {
         ...createEmptyReport(),
         documentType: "loading_list",
         loadingListTitle: "დატვირთვის სია",
+        loadingTableColumns: ["ორიგინალი", "ქართული თარგმანი", "პანელის ფერი", "მ²"],
+        loadingTableRows: [{ cells: ["Demo loading list row", "Demo დატვირთვის სიის ხაზი", "UBEDA", "გადასამოწმებელია"] }],
         loadingRows: [
           { originalText: "Demo loading list row", georgianText: "Demo დატვირთვის სიის ხაზი", panelColor: "UBEDA", panelAreaSqm: "გადასამოწმებელია" }
         ],
@@ -506,8 +526,22 @@ function buildPrintableReportContent() {
 
 function buildPrintableLoadingListContent() {
   const rows = Array.isArray(state.report.loadingRows) ? state.report.loadingRows : [];
+  const tableColumns = Array.isArray(state.report.loadingTableColumns) ? state.report.loadingTableColumns : [];
+  const tableRows = Array.isArray(state.report.loadingTableRows) ? state.report.loadingTableRows : [];
   const totals = Array.isArray(state.report.panelTotals) ? state.report.panelTotals : [];
-  const rowHtml = rows.length
+  const sourceTableHtml = tableRows.length
+    ? `
+      <table>
+        <thead>
+          <tr>${(tableColumns.length ? tableColumns : ["დატვირთვის სია"]).map((column) => `<th>${escapeHtml(column)}</th>`).join("")}</tr>
+        </thead>
+        <tbody>
+          ${tableRows.map((row) => `<tr>${(row.cells || [UNKNOWN]).map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}
+        </tbody>
+      </table>
+    `
+    : "";
+  const rowHtml = !tableRows.length && rows.length
     ? rows.map((row, index) => `
         <tr>
           <td>${index + 1}</td>
@@ -526,7 +560,7 @@ function buildPrintableLoadingListContent() {
     <p>ქართული დატვირთვის სია</p>
     <section>
       <h2>დატვირთვის სია</h2>
-      <table>
+      ${sourceTableHtml || `<table>
         <thead>
           <tr>
             <th>#</th>
@@ -537,7 +571,7 @@ function buildPrintableLoadingListContent() {
           </tr>
         </thead>
         <tbody>${rowHtml}</tbody>
-      </table>
+      </table>`}
     </section>
     <section>
       <h2>პანელების ჯამი ფერის მიხედვით</h2>
