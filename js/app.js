@@ -47,8 +47,6 @@ const els = {
   connectionStatus: $("#connectionStatus"),
   apiBaseInput: $("#apiBaseInput"),
   saveApiBaseBtn: $("#saveApiBaseBtn"),
-  documentTypeInput: $("#documentTypeInput"),
-  loadingListView: $("#loadingListView"),
   usagePercent: $("#usagePercent"),
   usageBar: $("#usageBar"),
   usageText: $("#usageText")
@@ -75,7 +73,6 @@ function createEmptyReport() {
   return {
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
-    documentType: "shower_offer",
     sourceFiles: [],
     clientName: UNKNOWN,
     address: UNKNOWN,
@@ -92,12 +89,7 @@ function createEmptyReport() {
     workNotes: [],
     sketchExplanation: Object.fromEntries(sketchFields.map((key) => [key, UNKNOWN])),
     suspiciousItems: [UNKNOWN],
-    sourceNotes: [],
-    loadingListTitle: UNKNOWN,
-    loadingTableColumns: [],
-    loadingTableRows: [],
-    loadingRows: [],
-    panelTotals: []
+    sourceNotes: []
   };
 }
 
@@ -203,7 +195,6 @@ function syncFormFromReport() {
   });
   renderPrices();
   els.reportTitle.textContent = report.clientName && report.clientName !== UNKNOWN ? report.clientName : "ახალი სამუშაო";
-  renderDocumentMode();
 }
 
 function syncReportFromForm() {
@@ -258,76 +249,6 @@ function normalizeReport(payload) {
   return report;
 }
 
-function renderDocumentMode() {
-  const isLoadingList = state.report.documentType === "loading_list";
-  if (els.reportForm) els.reportForm.hidden = isLoadingList;
-  if (els.loadingListView) {
-    els.loadingListView.hidden = !isLoadingList;
-    if (isLoadingList) renderLoadingListView();
-  }
-  if (els.reportTitle) {
-    els.reportTitle.textContent = isLoadingList ? state.report.loadingListTitle || "დატვირთვის სია" : (state.report.clientName && state.report.clientName !== UNKNOWN ? state.report.clientName : "ახალი სამუშაო");
-  }
-}
-
-function renderLoadingListView() {
-  const rows = Array.isArray(state.report.loadingRows) ? state.report.loadingRows : [];
-  const tableColumns = Array.isArray(state.report.loadingTableColumns) ? state.report.loadingTableColumns : [];
-  const tableRows = Array.isArray(state.report.loadingTableRows) ? state.report.loadingTableRows : [];
-  const totals = Array.isArray(state.report.panelTotals) ? state.report.panelTotals : [];
-  const sourceTableHtml = tableRows.length
-    ? `
-      <div class="table-wrap">
-        <table class="loading-table">
-          <thead>
-            <tr>${(tableColumns.length ? tableColumns : ["დატვირთვის სია"]).map((column) => `<th>${escapeHtml(column)}</th>`).join("")}</tr>
-          </thead>
-          <tbody>
-            ${tableRows.map((row) => `<tr>${(row.cells || [UNKNOWN]).map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}
-          </tbody>
-        </table>
-      </div>
-    `
-    : "";
-  const rowHtml = !tableRows.length && rows.length
-    ? rows.map((row, index) => `
-        <tr>
-          <td>${index + 1}</td>
-          <td>${escapeHtml(row.originalText || UNKNOWN)}</td>
-          <td>${escapeHtml(row.georgianText || UNKNOWN)}</td>
-          <td>${escapeHtml(row.panelColor || UNKNOWN)}</td>
-          <td>${escapeHtml(row.panelAreaSqm || UNKNOWN)}</td>
-        </tr>
-      `).join("")
-    : `<tr><td colspan="5">${UNKNOWN}</td></tr>`;
-  const totalHtml = totals.length
-    ? totals.map((item) => `<li><strong>${escapeHtml(item.panelColor || UNKNOWN)}</strong><span>${escapeHtml(item.totalSqm || UNKNOWN)} m²</span></li>`).join("")
-    : `<li><strong>${UNKNOWN}</strong><span>m²</span></li>`;
-  els.loadingListView.innerHTML = `
-    <section class="loading-list-card">
-      <h3>${escapeHtml(state.report.loadingListTitle || "დატვირთვის სია")}</h3>
-      ${sourceTableHtml || `<div class="table-wrap">
-        <table class="loading-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>ორიგინალი</th>
-              <th>ქართული თარგმანი</th>
-              <th>პანელის ფერი</th>
-              <th>მ²</th>
-            </tr>
-          </thead>
-          <tbody>${rowHtml}</tbody>
-        </table>
-      </div>`}
-    </section>
-    <section class="loading-list-card">
-      <h3>პანელების ჯამი ფერის მიხედვით</h3>
-      <ul class="panel-total-list">${totalHtml}</ul>
-    </section>
-  `;
-}
-
 async function analyzeFiles() {
   if (!state.files.length) {
     showAlert("ჯერ ატვირთე მინიმუმ ერთი PDF ან სურათი.", "warn");
@@ -342,7 +263,6 @@ async function analyzeFiles() {
   try {
     const formData = new FormData();
     state.files.forEach((file) => formData.append("files", file));
-    formData.append("analysisType", els.documentTypeInput?.value || "shower_offer");
     const response = await fetch(apiUrl("/api/analyze"), { method: "POST", body: formData });
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || "ანალიზი ვერ შესრულდა");
@@ -362,27 +282,6 @@ async function analyzeFiles() {
 
 function loadDemo() {
   const fileHint = state.files[0]?.name || "Nazif Demir.pdf";
-  const documentType = els.documentTypeInput?.value || "shower_offer";
-  if (documentType === "loading_list") {
-    state.report = normalizeReport({
-      sourceFiles: state.files.map((file) => file.name),
-      analysis: {
-        ...createEmptyReport(),
-        documentType: "loading_list",
-        loadingListTitle: "დატვირთვის სია",
-        loadingTableColumns: ["ორიგინალი", "ქართული თარგმანი", "პანელის ფერი", "მ²"],
-        loadingTableRows: [{ cells: ["Demo loading list row", "Demo დატვირთვის სიის ხაზი", "UBEDA", "გადასამოწმებელია"] }],
-        loadingRows: [
-          { originalText: "Demo loading list row", georgianText: "Demo დატვირთვის სიის ხაზი", panelColor: "UBEDA", panelAreaSqm: "გადასამოწმებელია" }
-        ],
-        panelTotals: [{ panelColor: "UBEDA", totalSqm: "გადასამოწმებელია" }],
-        suspiciousItems: ["დატვირთვის სიის მონაცემები გადასამოწმებელია"]
-      }
-    });
-    syncFormFromReport();
-    showAlert("Demo დატვირთვის სია ჩაიტვირთა.", "info");
-    return;
-  }
   state.report = normalizeReport({
     sourceFiles: state.files.map((file) => file.name),
     analysis: {
@@ -508,7 +407,6 @@ function exportPdf() {
 }
 
 function buildPrintableReportContent() {
-  if (state.report.documentType === "loading_list") return buildPrintableLoadingListContent();
   const section = (title, body) => `<section><h2>${escapeHtml(title)}</h2>${body}</section>`;
   const list = (items) => `<ul>${(items?.length ? items : [UNKNOWN]).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
   return `
@@ -522,66 +420,6 @@ function buildPrintableReportContent() {
       ${section("შენიშვნები", list(state.report.workNotes))}
       ${section("საეჭვო / გადასამოწმებელი ადგილები", `<div class="check">${list(state.report.suspiciousItems)}</div>`)}
     `;
-}
-
-function buildPrintableLoadingListContent() {
-  const rows = Array.isArray(state.report.loadingRows) ? state.report.loadingRows : [];
-  const tableColumns = Array.isArray(state.report.loadingTableColumns) ? state.report.loadingTableColumns : [];
-  const tableRows = Array.isArray(state.report.loadingTableRows) ? state.report.loadingTableRows : [];
-  const totals = Array.isArray(state.report.panelTotals) ? state.report.panelTotals : [];
-  const sourceTableHtml = tableRows.length
-    ? `
-      <table>
-        <thead>
-          <tr>${(tableColumns.length ? tableColumns : ["დატვირთვის სია"]).map((column) => `<th>${escapeHtml(column)}</th>`).join("")}</tr>
-        </thead>
-        <tbody>
-          ${tableRows.map((row) => `<tr>${(row.cells || [UNKNOWN]).map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}
-        </tbody>
-      </table>
-    `
-    : "";
-  const rowHtml = !tableRows.length && rows.length
-    ? rows.map((row, index) => `
-        <tr>
-          <td>${index + 1}</td>
-          <td>${escapeHtml(row.originalText || UNKNOWN)}</td>
-          <td>${escapeHtml(row.georgianText || UNKNOWN)}</td>
-          <td>${escapeHtml(row.panelColor || UNKNOWN)}</td>
-          <td>${escapeHtml(row.panelAreaSqm || UNKNOWN)}</td>
-        </tr>
-      `).join("")
-    : `<tr><td colspan="5">${UNKNOWN}</td></tr>`;
-  const totalHtml = totals.length
-    ? totals.map((item) => `<li><strong>${escapeHtml(item.panelColor || UNKNOWN)}</strong>: ${escapeHtml(item.totalSqm || UNKNOWN)} m²</li>`).join("")
-    : `<li>${UNKNOWN}</li>`;
-  return `
-    <h1>${escapeHtml(state.report.loadingListTitle || "დატვირთვის სია")}</h1>
-    <p>ქართული დატვირთვის სია</p>
-    <section>
-      <h2>დატვირთვის სია</h2>
-      ${sourceTableHtml || `<table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>ორიგინალი</th>
-            <th>ქართული თარგმანი</th>
-            <th>პანელის ფერი</th>
-            <th>მ²</th>
-          </tr>
-        </thead>
-        <tbody>${rowHtml}</tbody>
-      </table>`}
-    </section>
-    <section>
-      <h2>პანელების ჯამი ფერის მიხედვით</h2>
-      <ul>${totalHtml}</ul>
-    </section>
-    <section>
-      <h2>საეჭვო / გადასამოწმებელი ადგილები</h2>
-      <div class="check">${(state.report.suspiciousItems || [UNKNOWN]).map((item) => `<p>${escapeHtml(item)}</p>`).join("")}</div>
-    </section>
-  `;
 }
 
 function labelForSketch(key) {
@@ -694,12 +532,6 @@ function bindEvents() {
     state.report = createEmptyReport();
     els.fileInput.value = "";
     renderFiles();
-    syncFormFromReport();
-    clearAlert();
-  });
-  els.documentTypeInput?.addEventListener("change", () => {
-    state.report = createEmptyReport();
-    state.report.documentType = els.documentTypeInput.value;
     syncFormFromReport();
     clearAlert();
   });

@@ -348,63 +348,6 @@ select:focus {
   display: none;
 }
 
-.loading-list-view {
-  display: grid;
-  gap: 14px;
-}
-
-.loading-list-card {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
-  padding: 14px;
-}
-
-.loading-list-card h3 {
-  margin: 0 0 12px;
-}
-
-.table-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-}
-
-.loading-table {
-  width: 100%;
-  min-width: 860px;
-  border-collapse: collapse;
-}
-
-.loading-table th,
-.loading-table td {
-  border-bottom: 1px solid var(--line);
-  padding: 8px;
-  text-align: left;
-  vertical-align: top;
-}
-
-.loading-table th {
-  background: #eef5f3;
-  color: var(--brand);
-}
-
-.panel-total-list {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.panel-total-list li {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 10px;
-}
 
 .update-toast {
   position: fixed;
