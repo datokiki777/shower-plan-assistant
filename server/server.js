@@ -24,23 +24,19 @@ const allowedOrigins = (process.env.API_ORIGINS || "http://localhost:4177,http:/
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-app.use(
-  cors({
-    origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-        return;
-      }
-      callback(new Error(`Origin not allowed: ${origin}`));
-    }
-  })
-);
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`Origin not allowed: ${origin}`));
+  }
+}));
 app.use(express.json({ limit: "1mb" }));
 app.use(express.static(publicDir));
 
 const UNKNOWN = "გადასამოწმებელია";
 
 const emptyAnalysis = () => ({
+  documentType: "shower_offer",
   clientName: UNKNOWN,
   address: UNKNOWN,
   phone: UNKNOWN,
@@ -64,14 +60,38 @@ const emptyAnalysis = () => ({
     panelWalls: UNKNOWN
   },
   suspiciousItems: [UNKNOWN],
+  sourceNotes: [],
+  loadingListTitle: UNKNOWN,
+  loadingRows: [],
+  panelTotals: []
 });
 
+const loadingRowSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    clientName: { type: "string" },
+    address: { type: "string" },
+    phone: { type: "string" },
+    packageType: { type: "string" },
+    showerTraySize: { type: "string" },
+    panelColor: { type: "string" },
+    panelAreaSqm: { type: "string" },
+    glassInfo: { type: "string" },
+    installables: { type: "array", items: { type: "string" } },
+    extraWork: { type: "array", items: { type: "string" } },
+    notes: { type: "array", items: { type: "string" } }
+  },
+  required: ["clientName", "address", "phone", "packageType", "showerTraySize", "panelColor", "panelAreaSqm", "glassInfo", "installables", "extraWork", "notes"]
+};
+
 const analysisSchema = {
-  name: "shower_plan_analysis",
+  name: "badelix_pdf_analysis",
   schema: {
     type: "object",
     additionalProperties: false,
     properties: {
+      documentType: { type: "string" },
       clientName: { type: "string" },
       address: { type: "string" },
       phone: { type: "string" },
@@ -100,9 +120,25 @@ const analysisSchema = {
         required: ["door", "wc", "window", "showerTray", "fixedGlass", "movingGlass", "panelWalls"]
       },
       suspiciousItems: { type: "array", items: { type: "string" } },
-      sourceNotes: { type: "array", items: { type: "string" } }
+      sourceNotes: { type: "array", items: { type: "string" } },
+      loadingListTitle: { type: "string" },
+      loadingRows: { type: "array", items: loadingRowSchema },
+      panelTotals: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            panelColor: { type: "string" },
+            totalSqm: { type: "string" },
+            clients: { type: "array", items: { type: "string" } }
+          },
+          required: ["panelColor", "totalSqm", "clients"]
+        }
+      }
     },
     required: [
+      "documentType",
       "clientName",
       "address",
       "phone",
@@ -118,7 +154,10 @@ const analysisSchema = {
       "workNotes",
       "sketchExplanation",
       "suspiciousItems",
-      "sourceNotes"
+      "sourceNotes",
+      "loadingListTitle",
+      "loadingRows",
+      "panelTotals"
     ]
   },
   strict: true
@@ -174,21 +213,26 @@ function fileToContent(file) {
   };
 }
 
+function promptForType(analysisType) {
+  if (analysisType === "loading_list") {
+    return "Analyze this BADELIX loading/list PDF. Return documentType='loading_list'. Recreate the list in Georgian with the same logical rows and order as the PDF. Translate German labels into Georgian, preserve client names, addresses, product names, dimensions, dates/ranges, prices, and numbers exactly when readable. For each client row extract clientName, address, phone if present, packageType, showerTraySize, panelColor such as UBEDA or ZANZIBAR, panelAreaSqm exactly as written, glassInfo, installables, extraWork, and notes. If a value is unclear return 'გადასამოწმებელია'. At the end calculate panelTotals: group all rows by identical panelColor and sum their panelAreaSqm in square meters. Use comma/dot decimals robustly. Include clients in each color group. Do not invent totals if source areas are unclear; mark total as 'გადასამოწმებელია'. Fill ordinary shower-offer fields with 'გადასამოწმებელია' or empty arrays.";
+  }
+
+  return "Analyze the BADELIX document by fixed page logic. Page 1: extract only client first/last name, address exactly as written, and telephone number if readable. Do not return order number or date. Page 2: extract selected system package as S or M, shower tray dimensions, and whether Antirutsch/anti-slip is selected. Do not create a general work-description paragraph. Page 3: extract selected glass partition size, selected hinged door/swing element size, BADELIX panel color such as UBEDA, and selected faucet/shower items under BADELIX Armaturen. Call that list 'დასაყენებლების სია'. Faucet options are Mischbatterie and Thermomischbatterie. Hand shower options are Brauseset and Regendusche. Do not include item prices in installables. Extract Zusatzarbeiten as 'დამატებითი სამუშაო' and translate handwritten work items into Georgian, without prices unless the price is necessary to identify the handwritten line. Page 4: extract selected panel height. Translate Verkleidung bis Wannenrand as 'ძველი ვანის კანტამდე', Verkleidung bis Fliesenkante as 'კაფელის კანტამდე', and Verkleidung deckenhoch/Deckenhöhe as 'ჭერამდე'. Explain the sketch in Georgian: where window, door, shower tray, fixed/moving glass, WC, cabinet, protrusion/ledge (Vorsprung = უჯრა), panels and numbered handwritten notes are, preserving the original layout meaning. Also include suspicious/unclear items. Fill loading-list fields with empty arrays and 'გადასამოწმებელია'.";
+}
+
 app.post("/api/analyze", upload.array("files", 8), async (req, res) => {
   try {
     if (!process.env.OPENAI_API_KEY) {
-      return res.status(400).json({
-        error: "OPENAI_API_KEY is missing. Use demo mode or configure .env."
-      });
+      return res.status(400).json({ error: "OPENAI_API_KEY is missing. Use demo mode or configure .env." });
     }
 
     const files = req.files || [];
-    if (!files.length) {
-      return res.status(400).json({ error: "Upload at least one PDF or image." });
-    }
+    if (!files.length) return res.status(400).json({ error: "Upload at least one PDF or image." });
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const model = process.env.OPENAI_MODEL || "gpt-4.1";
+    const analysisType = req.body?.analysisType === "loading_list" ? "loading_list" : "shower_offer";
 
     const response = await client.responses.create({
       model,
@@ -198,19 +242,14 @@ app.post("/api/analyze", upload.array("files", 8), async (req, res) => {
           content: [
             {
               type: "input_text",
-              text:
-                "You extract German BADELIX shower installation offers for Georgian workers. Never invent unclear values. If handwriting, dimensions, location, checkbox state, or sketch meaning is uncertain, return exactly 'გადასამოწმებელია'. Do not extract order number, date, total prices, or a general job summary. Translate German labels and handwritten notes into natural Georgian while preserving dimensions, color names, package letters, and product names exactly when readable."
+              text: "You extract German BADELIX PDFs for Georgian workers. Never invent unclear values. If handwriting, dimensions, location, checkbox state, totals, or sketch meaning is uncertain, return exactly 'გადასამოწმებელია'. Translate German labels and handwritten notes into natural Georgian while preserving dimensions, color names, package letters, product names, dates/ranges, prices, and numbers exactly when readable."
             }
           ]
         },
         {
           role: "user",
           content: [
-            {
-              type: "input_text",
-              text:
-                "Analyze the BADELIX document by fixed page logic. Page 1: extract only client first/last name, address exactly as written, and telephone number if readable. Do not return order number or date. Page 2: extract selected system package as S or M, shower tray dimensions, and whether Antirutsch/anti-slip is selected. Do not create a general work-description paragraph. Page 3: extract selected glass partition size, selected hinged door/swing element size, BADELIX panel color such as UBEDA, and selected faucet/shower items under BADELIX Armaturen. Call that list 'დასაყენებლების სია'. Faucet options are Mischbatterie and Thermomischbatterie. Hand shower options are Brauseset and Regendusche. Do not include item prices in installables. Extract Zusatzarbeiten as 'დამატებითი სამუშაო' and translate handwritten work items into Georgian, without prices unless the price is necessary to identify the handwritten line. Page 4: extract selected panel height. Translate Verkleidung bis Wannenrand as 'ძველი ვანის კანტამდე', Verkleidung bis Fliesenkante as 'კაფელის კანტამდე', and Verkleidung deckenhoch/Deckenhöhe as 'ჭერამდე'. Explain the sketch in Georgian: where window, door, shower tray, fixed/moving glass, WC, cabinet, protrusion/ledge (Vorsprung = უჯრა), panels and numbered handwritten notes are, preserving the original layout meaning. Also include suspicious/unclear items."
-            },
+            { type: "input_text", text: promptForType(analysisType) },
             ...files.map(fileToContent)
           ]
         }
