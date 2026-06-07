@@ -275,16 +275,13 @@ function renderLoadingListView() {
     ? rows.map((row, index) => `
         <tr>
           <td>${index + 1}</td>
-          <td>${escapeHtml(row.clientName || UNKNOWN)}</td>
-          <td>${escapeHtml(row.address || UNKNOWN)}</td>
-          <td>${escapeHtml(row.packageType || UNKNOWN)}</td>
-          <td>${escapeHtml(row.showerTraySize || UNKNOWN)}</td>
+          <td>${escapeHtml(row.originalText || UNKNOWN)}</td>
+          <td>${escapeHtml(row.georgianText || UNKNOWN)}</td>
           <td>${escapeHtml(row.panelColor || UNKNOWN)}</td>
           <td>${escapeHtml(row.panelAreaSqm || UNKNOWN)}</td>
-          <td>${escapeHtml(arrayToText(row.notes || []))}</td>
         </tr>
       `).join("")
-    : `<tr><td colspan="8">${UNKNOWN}</td></tr>`;
+    : `<tr><td colspan="5">${UNKNOWN}</td></tr>`;
   const totalHtml = totals.length
     ? totals.map((item) => `<li><strong>${escapeHtml(item.panelColor || UNKNOWN)}</strong><span>${escapeHtml(item.totalSqm || UNKNOWN)} m²</span></li>`).join("")
     : `<li><strong>${UNKNOWN}</strong><span>m²</span></li>`;
@@ -296,13 +293,10 @@ function renderLoadingListView() {
           <thead>
             <tr>
               <th>#</th>
-              <th>კლიენტი</th>
-              <th>მისამართი</th>
-              <th>პაკეტი</th>
-              <th>დუშტასე</th>
+              <th>ორიგინალი</th>
+              <th>ქართული თარგმანი</th>
               <th>პანელის ფერი</th>
               <th>მ²</th>
-              <th>შენიშვნა</th>
             </tr>
           </thead>
           <tbody>${rowHtml}</tbody>
@@ -359,7 +353,7 @@ function loadDemo() {
         documentType: "loading_list",
         loadingListTitle: "დატვირთვის სია",
         loadingRows: [
-          { clientName: "გადასამოწმებელია", address: "გადასამოწმებელია", packageType: "გადასამოწმებელია", showerTraySize: "გადასამოწმებელია", panelColor: "UBEDA", panelAreaSqm: "გადასამოწმებელია", notes: ["Demo რეჟიმი"] }
+          { originalText: "Demo loading list row", georgianText: "Demo დატვირთვის სიის ხაზი", panelColor: "UBEDA", panelAreaSqm: "გადასამოწმებელია" }
         ],
         panelTotals: [{ panelColor: "UBEDA", totalSqm: "გადასამოწმებელია" }],
         suspiciousItems: ["დატვირთვის სიის მონაცემები გადასამოწმებელია"]
@@ -517,16 +511,13 @@ function buildPrintableLoadingListContent() {
     ? rows.map((row, index) => `
         <tr>
           <td>${index + 1}</td>
-          <td>${escapeHtml(row.clientName || UNKNOWN)}</td>
-          <td>${escapeHtml(row.address || UNKNOWN)}</td>
-          <td>${escapeHtml(row.packageType || UNKNOWN)}</td>
-          <td>${escapeHtml(row.showerTraySize || UNKNOWN)}</td>
+          <td>${escapeHtml(row.originalText || UNKNOWN)}</td>
+          <td>${escapeHtml(row.georgianText || UNKNOWN)}</td>
           <td>${escapeHtml(row.panelColor || UNKNOWN)}</td>
           <td>${escapeHtml(row.panelAreaSqm || UNKNOWN)}</td>
-          <td>${escapeHtml(arrayToText(row.notes || []))}</td>
         </tr>
       `).join("")
-    : `<tr><td colspan="8">${UNKNOWN}</td></tr>`;
+    : `<tr><td colspan="5">${UNKNOWN}</td></tr>`;
   const totalHtml = totals.length
     ? totals.map((item) => `<li><strong>${escapeHtml(item.panelColor || UNKNOWN)}</strong>: ${escapeHtml(item.totalSqm || UNKNOWN)} m²</li>`).join("")
     : `<li>${UNKNOWN}</li>`;
@@ -539,13 +530,10 @@ function buildPrintableLoadingListContent() {
         <thead>
           <tr>
             <th>#</th>
-            <th>კლიენტი</th>
-            <th>მისამართი</th>
-            <th>პაკეტი</th>
-            <th>დუშტასე</th>
+            <th>ორიგინალი</th>
+            <th>ქართული თარგმანი</th>
             <th>პანელის ფერი</th>
             <th>მ²</th>
-            <th>შენიშვნა</th>
           </tr>
         </thead>
         <tbody>${rowHtml}</tbody>

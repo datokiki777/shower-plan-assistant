@@ -70,19 +70,12 @@ const loadingRowSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
-    clientName: { type: "string" },
-    address: { type: "string" },
-    phone: { type: "string" },
-    packageType: { type: "string" },
-    showerTraySize: { type: "string" },
+    originalText: { type: "string" },
+    georgianText: { type: "string" },
     panelColor: { type: "string" },
-    panelAreaSqm: { type: "string" },
-    glassInfo: { type: "string" },
-    installables: { type: "array", items: { type: "string" } },
-    extraWork: { type: "array", items: { type: "string" } },
-    notes: { type: "array", items: { type: "string" } }
+    panelAreaSqm: { type: "string" }
   },
-  required: ["clientName", "address", "phone", "packageType", "showerTraySize", "panelColor", "panelAreaSqm", "glassInfo", "installables", "extraWork", "notes"]
+  required: ["originalText", "georgianText", "panelColor", "panelAreaSqm"]
 };
 
 const analysisSchema = {
@@ -215,7 +208,7 @@ function fileToContent(file) {
 
 function promptForType(analysisType) {
   if (analysisType === "loading_list") {
-    return "Analyze this BADELIX loading/list PDF. Return documentType='loading_list'. Recreate the list in Georgian with the same logical rows and order as the PDF. Translate German labels into Georgian, preserve client names, addresses, product names, dimensions, dates/ranges, prices, and numbers exactly when readable. For each client row extract clientName, address, phone if present, packageType, showerTraySize, panelColor such as UBEDA or ZANZIBAR, panelAreaSqm exactly as written, glassInfo, installables, extraWork, and notes. If a value is unclear return 'გადასამოწმებელია'. At the end calculate panelTotals: group all rows by identical panelColor and sum their panelAreaSqm in square meters. Use comma/dot decimals robustly. Include clients in each color group. Do not invent totals if source areas are unclear; mark total as 'გადასამოწმებელია'. Fill ordinary shower-offer fields with 'გადასამოწმებელია' or empty arrays.";
+    return "This is not a shower-offer analysis. It is a BADELIX loading list. Return documentType='loading_list'. Your job is only to translate/recreate the loading list in Georgian, preserving the same logical order, rows, grouping, dates, ranges, names, addresses, product names, colors, dimensions, square meters, and prices exactly when readable. Do not analyze or summarize. For each visible row/line/block, set originalText to the German/source text if readable, georgianText to the Georgian translation, panelColor to the panel color if that line/client includes a color such as UBEDA or ZANZIBAR, and panelAreaSqm to the panel square meter value if present. If unclear, use 'გადასამოწმებელია'. At the end calculate panelTotals: group all identical panel colors and sum their square meters. Use comma/dot decimals robustly. Include client names or row labels in the clients array for each color group. If areas are unclear, mark totalSqm as 'გადასამოწმებელია'. Fill ordinary shower-offer fields with 'გადასამოწმებელია' or empty arrays.";
   }
 
   return "Analyze the BADELIX document by fixed page logic. Page 1: extract only client first/last name, address exactly as written, and telephone number if readable. Do not return order number or date. Page 2: extract selected system package as S or M, shower tray dimensions, and whether Antirutsch/anti-slip is selected. Do not create a general work-description paragraph. Page 3: extract selected glass partition size, selected hinged door/swing element size, BADELIX panel color such as UBEDA, and selected faucet/shower items under BADELIX Armaturen. Call that list 'დასაყენებლების სია'. Faucet options are Mischbatterie and Thermomischbatterie. Hand shower options are Brauseset and Regendusche. Do not include item prices in installables. Extract Zusatzarbeiten as 'დამატებითი სამუშაო' and translate handwritten work items into Georgian, without prices unless the price is necessary to identify the handwritten line. Page 4: extract selected panel height. Translate Verkleidung bis Wannenrand as 'ძველი ვანის კანტამდე', Verkleidung bis Fliesenkante as 'კაფელის კანტამდე', and Verkleidung deckenhoch/Deckenhöhe as 'ჭერამდე'. Explain the sketch in Georgian: where window, door, shower tray, fixed/moving glass, WC, cabinet, protrusion/ledge (Vorsprung = უჯრა), panels and numbered handwritten notes are, preserving the original layout meaning. Also include suspicious/unclear items. Fill loading-list fields with empty arrays and 'გადასამოწმებელია'.";
