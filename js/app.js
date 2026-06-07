@@ -5,6 +5,7 @@ const STORE = "reports";
 const fields = [
   "clientName",
   "address",
+  "phone",
   "packageType",
   "showerTraySize",
   "antiSlip",
@@ -14,10 +15,8 @@ const fields = [
   "panelHeight",
   "installables",
   "extraWork",
-  "totalPrice",
   "workNotes",
-  "suspiciousItems",
-  "translatedSummaryKa"
+  "suspiciousItems"
 ];
 
 const sketchFields = ["door", "wc", "window", "showerTray", "fixedGlass", "movingGlass", "panelWalls"];
@@ -77,6 +76,7 @@ function createEmptyReport() {
     sourceFiles: [],
     clientName: UNKNOWN,
     address: UNKNOWN,
+    phone: UNKNOWN,
     packageType: UNKNOWN,
     showerTraySize: UNKNOWN,
     antiSlip: UNKNOWN,
@@ -86,12 +86,10 @@ function createEmptyReport() {
     panelHeight: UNKNOWN,
     installables: [],
     extraWork: [],
-    prices: [{ label: UNKNOWN, amount: UNKNOWN }],
-    totalPrice: UNKNOWN,
     workNotes: [],
     sketchExplanation: Object.fromEntries(sketchFields.map((key) => [key, UNKNOWN])),
     suspiciousItems: [UNKNOWN],
-    translatedSummaryKa: UNKNOWN
+    sourceNotes: []
   };
 }
 
@@ -210,13 +208,16 @@ function syncReportFromForm() {
     const input = els.reportForm.elements[name];
     state.report.sketchExplanation[name] = input?.value.trim() || UNKNOWN;
   });
-  state.report.prices = [...els.priceRows.querySelectorAll(".price-row")].map((row) => ({
-    label: row.querySelector('[data-price="label"]').value.trim() || UNKNOWN,
-    amount: row.querySelector('[data-price="amount"]').value.trim() || UNKNOWN
-  }));
+  if (els.priceRows) {
+    state.report.prices = [...els.priceRows.querySelectorAll(".price-row")].map((row) => ({
+      label: row.querySelector('[data-price="label"]').value.trim() || UNKNOWN,
+      amount: row.querySelector('[data-price="amount"]').value.trim() || UNKNOWN
+    }));
+  }
 }
 
 function renderPrices() {
+  if (!els.priceRows) return;
   els.priceRows.innerHTML = "";
   const prices = state.report.prices?.length ? state.report.prices : [{ label: UNKNOWN, amount: UNKNOWN }];
   prices.forEach((price, index) => {
@@ -245,7 +246,6 @@ function normalizeReport(payload) {
     if (Array.isArray(createEmptyReport()[name]) && !Array.isArray(report[name])) report[name] = textToArray(report[name]);
     if (!report[name] || (Array.isArray(report[name]) && report[name].length === 0)) report[name] = Array.isArray(createEmptyReport()[name]) ? [UNKNOWN] : UNKNOWN;
   });
-  if (!Array.isArray(report.prices) || !report.prices.length) report.prices = [{ label: UNKNOWN, amount: UNKNOWN }];
   return report;
 }
 
@@ -287,6 +287,7 @@ function loadDemo() {
     analysis: {
       clientName: fileHint.replace(/\.pdf$/i, ""),
       address: UNKNOWN,
+      phone: UNKNOWN,
       packageType: UNKNOWN,
       showerTraySize: "ზომა დოკუმენტიდან წასაკითხია - გადასამოწმებელია",
       antiSlip: UNKNOWN,
@@ -296,8 +297,6 @@ function loadDemo() {
       panelHeight: UNKNOWN,
       installables: ["დასაყენებლების სია: გადასამოწმებელია"],
       extraWork: ["დამატებითი სამუშაოები: გადასამოწმებელია"],
-      prices: [{ label: "მასალები და მონტაჟი", amount: UNKNOWN }],
-      totalPrice: UNKNOWN,
       workNotes: ["ხელნაწერი ან skizze სრულად უნდა გადამოწმდეს."],
       sketchExplanation: {
         door: UNKNOWN,
@@ -308,8 +307,7 @@ function loadDemo() {
         movingGlass: UNKNOWN,
         panelWalls: UNKNOWN
       },
-      suspiciousItems: ["ზომები", "ხელნაწერი შენიშვნები", "ჯამური ფასი"],
-      translatedSummaryKa: "დოკუმენტი ეხება დუშის ზონის სამუშაოს. ზუსტი ზომები, განლაგება და ფასები გადასამოწმებელია ორიგინალ PDF-ში."
+      suspiciousItems: ["ზომები", "ხელნაწერი შენიშვნები"]
     }
   });
   syncFormFromReport();
@@ -409,25 +407,16 @@ function exportPdf() {
 }
 
 function buildPrintableReportContent() {
-  const priceRows = state.report.prices
-    .map((price) => `<tr><td>${escapeHtml(price.label)}</td><td>${escapeHtml(price.amount)}</td></tr>`)
-    .join("");
   const section = (title, body) => `<section><h2>${escapeHtml(title)}</h2>${body}</section>`;
   const list = (items) => `<ul>${(items?.length ? items : [UNKNOWN]).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
   return `
       <h1>Shower Plan Assistant</h1>
       <p>ქართული სამუშაო ანგარიში</p>
-      <div class="meta">
-        <p><strong>კლიენტი:</strong> ${escapeHtml(state.report.clientName)}</p>
-        <p><strong>მისამართი:</strong> ${escapeHtml(state.report.address)}</p>
-        <p><strong>პაკეტი:</strong> ${escapeHtml(state.report.packageType)}</p>
-        <p><strong>ანტისრიალი:</strong> ${escapeHtml(state.report.antiSlip)}</p>
-      </div>
-      ${section("სამუშაოს მოკლე აღწერა", `<p>${escapeHtml(state.report.translatedSummaryKa)}</p><p><strong>დუშტასე:</strong> ${escapeHtml(state.report.showerTraySize)}</p>`)}
+      ${section("კლიენტის მონაცემები", `<p><strong>კლიენტი:</strong> ${escapeHtml(state.report.clientName)}</p><p><strong>მისამართი:</strong> ${escapeHtml(state.report.address)}</p><p><strong>ტელეფონი:</strong> ${escapeHtml(state.report.phone)}</p>`)}
+      ${section("პაკეტი და დუშტასე", `<p><strong>პაკეტი:</strong> ${escapeHtml(state.report.packageType)}</p><p><strong>დუშტასე:</strong> ${escapeHtml(state.report.showerTraySize)}</p><p><strong>ანტისრიალი:</strong> ${escapeHtml(state.report.antiSlip)}</p>`)}
       ${section("მასალები", `<p><strong>შუშის ზომა:</strong> ${escapeHtml(state.report.glassPartitionSize)}</p><p><strong>დასაკიდი კარის ზომა:</strong> ${escapeHtml(state.report.hingedDoorSize)}</p><p><strong>პანელის ფერი:</strong> ${escapeHtml(state.report.panelColor)}</p><p><strong>პანელი სადამდე კეთდება:</strong> ${escapeHtml(state.report.panelHeight)}</p><h3>დასაყენებლების სია</h3>${list(state.report.installables)}`)}
       ${section("ნახაზის ახსნა", `<table><tbody>${sketchFields.map((key) => `<tr><th>${escapeHtml(labelForSketch(key))}</th><td>${escapeHtml(state.report.sketchExplanation[key])}</td></tr>`).join("")}</tbody></table>`)}
       ${section("დამატებითი სამუშაოები", list(state.report.extraWork))}
-      ${section("ფასების ცხრილი", `<table><thead><tr><th>პოზიცია</th><th>ფასი</th></tr></thead><tbody>${priceRows}<tr><th>ჯამი</th><th>${escapeHtml(state.report.totalPrice)}</th></tr></tbody></table>`)}
       ${section("შენიშვნები", list(state.report.workNotes))}
       ${section("საეჭვო / გადასამოწმებელი ადგილები", `<div class="check">${list(state.report.suspiciousItems)}</div>`)}
     `;
@@ -546,11 +535,14 @@ function bindEvents() {
     syncFormFromReport();
     clearAlert();
   });
-  els.addPriceBtn.addEventListener("click", () => {
-    syncReportFromForm();
-    state.report.prices.push({ label: UNKNOWN, amount: UNKNOWN });
-    renderPrices();
-  });
+  if (els.addPriceBtn) {
+    els.addPriceBtn.addEventListener("click", () => {
+      syncReportFromForm();
+      state.report.prices = state.report.prices || [];
+      state.report.prices.push({ label: UNKNOWN, amount: UNKNOWN });
+      renderPrices();
+    });
+  }
   els.saveBtn.addEventListener("click", () => saveCurrentReport(true));
   els.exportBtn.addEventListener("click", exportPdf);
   els.clearHistoryBtn.addEventListener("click", async () => {

@@ -43,6 +43,7 @@ const UNKNOWN = "გადასამოწმებელია";
 const emptyAnalysis = () => ({
   clientName: UNKNOWN,
   address: UNKNOWN,
+  phone: UNKNOWN,
   packageType: UNKNOWN,
   showerTraySize: UNKNOWN,
   antiSlip: UNKNOWN,
@@ -52,8 +53,6 @@ const emptyAnalysis = () => ({
   panelHeight: UNKNOWN,
   installables: [],
   extraWork: [],
-  prices: [],
-  totalPrice: UNKNOWN,
   workNotes: [],
   sketchExplanation: {
     door: UNKNOWN,
@@ -65,7 +64,6 @@ const emptyAnalysis = () => ({
     panelWalls: UNKNOWN
   },
   suspiciousItems: [UNKNOWN],
-  translatedSummaryKa: UNKNOWN
 });
 
 const analysisSchema = {
@@ -76,6 +74,7 @@ const analysisSchema = {
     properties: {
       clientName: { type: "string" },
       address: { type: "string" },
+      phone: { type: "string" },
       packageType: { type: "string" },
       showerTraySize: { type: "string" },
       antiSlip: { type: "string" },
@@ -85,19 +84,6 @@ const analysisSchema = {
       panelHeight: { type: "string" },
       installables: { type: "array", items: { type: "string" } },
       extraWork: { type: "array", items: { type: "string" } },
-      prices: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            label: { type: "string" },
-            amount: { type: "string" }
-          },
-          required: ["label", "amount"]
-        }
-      },
-      totalPrice: { type: "string" },
       workNotes: { type: "array", items: { type: "string" } },
       sketchExplanation: {
         type: "object",
@@ -114,11 +100,12 @@ const analysisSchema = {
         required: ["door", "wc", "window", "showerTray", "fixedGlass", "movingGlass", "panelWalls"]
       },
       suspiciousItems: { type: "array", items: { type: "string" } },
-      translatedSummaryKa: { type: "string" }
+      sourceNotes: { type: "array", items: { type: "string" } }
     },
     required: [
       "clientName",
       "address",
+      "phone",
       "packageType",
       "showerTraySize",
       "antiSlip",
@@ -128,12 +115,10 @@ const analysisSchema = {
       "panelHeight",
       "installables",
       "extraWork",
-      "prices",
-      "totalPrice",
       "workNotes",
       "sketchExplanation",
       "suspiciousItems",
-      "translatedSummaryKa"
+      "sourceNotes"
     ]
   },
   strict: true
@@ -214,7 +199,7 @@ app.post("/api/analyze", upload.array("files", 8), async (req, res) => {
             {
               type: "input_text",
               text:
-                "You extract German BADELIX shower installation offers for Georgian workers. Never invent unclear values. If handwriting, dimensions, price, location, checkbox state, or sketch meaning is uncertain, return exactly 'გადასამოწმებელია'. Do not extract order number or date. Translate German labels and handwritten notes into natural Georgian while preserving dimensions, prices, color names, package letters, and product names exactly when readable."
+                "You extract German BADELIX shower installation offers for Georgian workers. Never invent unclear values. If handwriting, dimensions, location, checkbox state, or sketch meaning is uncertain, return exactly 'გადასამოწმებელია'. Do not extract order number, date, total prices, or a general job summary. Translate German labels and handwritten notes into natural Georgian while preserving dimensions, color names, package letters, and product names exactly when readable."
             }
           ]
         },
@@ -224,7 +209,7 @@ app.post("/api/analyze", upload.array("files", 8), async (req, res) => {
             {
               type: "input_text",
               text:
-                "Analyze the BADELIX document by page logic. Page 1: extract only client first/last name and address exactly as written. Do not return order number or date. Page 2: extract selected system package as S or M, shower tray dimensions, and whether Antirutsch/anti-slip is selected. Page 3: extract selected glass partition size, selected hinged door/swing element size, BADELIX panel color such as UBEDA, selected faucet/shower items under BADELIX Armaturen, and call that list 'დასაყენებლების სია'. Faucet options are Mischbatterie and Thermomischbatterie. Hand shower options are Brauseset and Regendusche. Extract Zusatzarbeiten as 'დამატებითი სამუშაო' and translate handwritten work items into Georgian. Page 4: extract selected panel height. Translate Verkleidung bis Wannenrand as 'ძველი ვანის კანტამდე', Verkleidung bis Fliesenkante as 'კაფელის კანტამდე', and Verkleidung deckenhoch/Deckenhöhe as 'ჭერამდე'. Explain the sketch in Georgian: where window, door, shower tray, fixed/moving glass, WC, cabinet, protrusion/ledge (Vorsprung = უჯრა), panels and numbered handwritten notes are, preserving the original layout meaning. Also include suspicious/unclear items."
+                "Analyze the BADELIX document by fixed page logic. Page 1: extract only client first/last name, address exactly as written, and telephone number if readable. Do not return order number or date. Page 2: extract selected system package as S or M, shower tray dimensions, and whether Antirutsch/anti-slip is selected. Do not create a general work-description paragraph. Page 3: extract selected glass partition size, selected hinged door/swing element size, BADELIX panel color such as UBEDA, and selected faucet/shower items under BADELIX Armaturen. Call that list 'დასაყენებლების სია'. Faucet options are Mischbatterie and Thermomischbatterie. Hand shower options are Brauseset and Regendusche. Do not include item prices in installables. Extract Zusatzarbeiten as 'დამატებითი სამუშაო' and translate handwritten work items into Georgian, without prices unless the price is necessary to identify the handwritten line. Page 4: extract selected panel height. Translate Verkleidung bis Wannenrand as 'ძველი ვანის კანტამდე', Verkleidung bis Fliesenkante as 'კაფელის კანტამდე', and Verkleidung deckenhoch/Deckenhöhe as 'ჭერამდე'. Explain the sketch in Georgian: where window, door, shower tray, fixed/moving glass, WC, cabinet, protrusion/ledge (Vorsprung = უჯრა), panels and numbered handwritten notes are, preserving the original layout meaning. Also include suspicious/unclear items."
             },
             ...files.map(fileToContent)
           ]
