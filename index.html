@@ -4,93 +4,31 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Shower Plan Assistant</title>
-  <meta name="description" content="German shower plan OCR, Georgian translation and report export." />
+  <meta name="description" content="Manual Georgian shower work report and PDF export." />
   <meta name="theme-color" content="#0e5c56" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" type="image/png" href="icons/favicon.png" />
   <link rel="stylesheet" href="css/styles.css" />
-  <script defer src="config.js"></script>
   <script defer src="js/app.js"></script>
 </head>
 <body>
   <main class="app-shell">
     <header class="topbar">
       <div>
-        <p class="eyebrow">PDF / Skizze / Georgian report</p>
+        <p class="eyebrow">Manual Georgian report</p>
         <h1>Shower Plan Assistant</h1>
       </div>
-      <div class="status-pill" id="connectionStatus">ლოკალური რეჟიმი</div>
     </header>
 
-    <section class="workspace">
-      <aside class="upload-panel">
-        <div class="drop-zone" id="dropZone">
-          <input id="fileInput" type="file" accept="application/pdf,image/*" multiple />
-          <div class="drop-art" aria-hidden="true">
-            <span></span><span></span><span></span>
-          </div>
-          <h2>ფაილების ატვირთვა</h2>
-          <p>PDF, ფოტო ან screenshot. AI გაურკვეველ ტექსტს მონიშნავს როგორც გადასამოწმებელია.</p>
-          <button class="primary" type="button" id="pickFilesBtn">ფაილების არჩევა</button>
-        </div>
-
-        <div class="file-list" id="fileList"></div>
-
-        <div class="actions">
-          <button class="primary" type="button" id="analyzeBtn">AI ანალიზი</button>
-          <button type="button" id="demoBtn">Demo შედეგი</button>
-          <button type="button" id="clearBtn">გასუფთავება</button>
-        </div>
-
-        <section class="api-settings">
-          <label>Backend URL
-            <input id="apiBaseInput" placeholder="https://your-api.onrender.com" />
-          </label>
-          <button type="button" id="saveApiBaseBtn">დაკავშირება</button>
-        </section>
-
-        <section class="usage-meter">
-          <div class="usage-head">
-            <strong>თვიური $5 ლიმიტი</strong>
-            <span id="usagePercent">0%</span>
-          </div>
-          <div class="usage-bar"><span id="usageBar"></span></div>
-          <small id="usageText">$0.000 / $5.00 დაახლოებით</small>
-        </section>
-
-        <section class="term-box">
-          <div class="section-head">
-            <h2>ტერმინების ლექსიკონი</h2>
-            <button type="button" id="toggleTermsBtn">მართვა</button>
-          </div>
-          <small id="termSummary">დამატებული ტერმინები ანალიზში ავტომატურად გამოიყენება.</small>
-          <div class="term-row">
-            <input id="termGermanInput" placeholder="German term" />
-            <input id="termGeorgianInput" placeholder="ქართული მნიშვნელობა" />
-          </div>
-          <div class="term-actions">
-            <button type="button" id="addTermBtn">ტერმინის დამატება</button>
-            <button type="button" id="clearTermsBtn" hidden>ყველას წაშლა</button>
-          </div>
-          <div id="termList" class="term-list" hidden></div>
-        </section>
-
-        <section class="history">
-          <div class="section-head">
-            <h2>ისტორია</h2>
-            <button type="button" id="clearHistoryBtn">წაშლა</button>
-          </div>
-          <div id="historyList" class="history-list"></div>
-        </section>
-      </aside>
-
-      <section class="report-panel">
+    <section class="workspace manual-workspace">
+      <section class="report-panel manual-report-panel">
         <div class="report-toolbar">
           <div>
             <p class="eyebrow">ქართული ანგარიში</p>
             <h2 id="reportTitle">ახალი სამუშაო</h2>
           </div>
           <div class="toolbar-actions">
+            <button type="button" id="clearBtn">გასუფთავება</button>
             <button type="button" id="saveBtn">შენახვა</button>
             <button class="primary" type="button" id="exportBtn">PDF export</button>
           </div>
@@ -132,6 +70,14 @@
             <label>სამუშაო შენიშვნები <textarea name="workNotes" rows="4"></textarea></label>
           </section>
         </form>
+
+        <section class="history manual-history">
+          <div class="section-head">
+            <h2>ისტორია</h2>
+            <button type="button" id="clearHistoryBtn">წაშლა</button>
+          </div>
+          <div id="historyList" class="history-list"></div>
+        </section>
       </section>
     </section>
   </main>
