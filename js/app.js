@@ -264,8 +264,6 @@ function buildStandaloneReportDocument() {
     }
     h3 { margin: 6px 0 3px; font-size: 11px; }
     p { margin: 1px 0; font-size: 10.5px; }
-    a { color: #0e5c56; font-weight: 800; }
-    .report-link { color: #0e5c56; }
     ul { margin: 3px 0 0 14px; padding: 0; font-size: 10.5px; }
     .print-actions {
       position: sticky;
@@ -314,18 +312,12 @@ function printStandaloneReport() {
 function buildPrintableReportContent() {
   const section = (title, body) => (body ? `<section class="report-section"><h2>${escapeHtml(title)}</h2>${body}</section>` : "");
   const text = (value) => escapeHtml(value).replace(/\r?\n/g, "<br>");
-  const mapsLink = (address) => {
-    if (!hasValue(address)) return "";
-    const query = encodeURIComponent(String(address).replace(/\s+/g, " ").trim());
-    return `<p class="report-link"><strong>Google Maps:</strong> <a href="https://www.google.com/maps/search/?api=1&query=${query}" target="_blank" rel="noopener">მისამართის გახსნა</a></p>`;
-  };
   const p = (label, value) => (hasValue(value) ? `<p><strong>${escapeHtml(label)}:</strong> ${text(value)}</p>` : "");
   const list = (items) => (hasValue(items) ? `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "");
 
   const client = [
     p("კლიენტი", state.report.clientName),
     p("მისამართი", state.report.address),
-    mapsLink(state.report.address),
     p("ტელეფონი", state.report.phone)
   ].join("");
   const packageInfo = [
