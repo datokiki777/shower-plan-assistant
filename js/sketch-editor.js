@@ -8,6 +8,7 @@
     sink: { label: "ხელსაბანი", color: "#4f968d", widthCm: 60, heightCm: 45 },
     radiator: { label: "რადიატორი", color: "#bd6b6b", widthCm: 80, heightCm: 15 },
     glass: { label: "შუშა (ESG)", color: "#7d8b96", widthCm: 100, heightCm: 2 },
+    glassDoor: { label: "შუშის კარი", color: "#69a0aa", widthCm: 80, heightCm: 2 },
     outerNiche: { label: "უჯრა გარეთ", color: "#c48454", widthCm: 60, heightCm: 30 },
     innerNiche: { label: "უჯრა შიგნით", color: "#9d7a51", widthCm: 60, heightCm: 30 },
     floorFill: { label: "იატაკის ამოვსება", color: "#79a471", widthCm: 120, heightCm: 90 }
@@ -54,7 +55,7 @@
               widthCm: clampNumber(item.widthCm, 2, 1500, ITEM_TYPES[item.type].widthCm),
               heightCm: clampNumber(item.heightCm, 2, 1500, ITEM_TYPES[item.type].heightCm),
               wall: item.type === "door" ? normalizeDoorWall(item.wall, item.x, item.y) : null,
-              flip: item.type === "door" ? Boolean(item.flip) : false
+              flip: item.type === "door" || item.type === "glassDoor" ? Boolean(item.flip) : false
             }))
             .map((item) => (item.type === "door" ? snapDoorToWall(item, item.wall, widthCm, heightCm) : item))
         : []
@@ -126,6 +127,7 @@
     els.saveBtn = document.querySelector("#saveSketchBtn");
     els.clearBtn = document.querySelector("#clearSketchBtn");
     els.rotateBtn = document.querySelector("#rotateSketchItemBtn");
+    els.flipBtn = document.querySelector("#flipSketchItemBtn");
     els.deleteBtn = document.querySelector("#deleteSketchItemBtn");
     els.palette = document.querySelector("#sketchPalette");
     els.widthInput = document.querySelector("#roomWidthInput");
@@ -148,6 +150,7 @@
     els.saveBtn?.addEventListener("click", save);
     els.clearBtn?.addEventListener("click", clear);
     els.rotateBtn?.addEventListener("click", rotateSelected);
+    els.flipBtn?.addEventListener("click", flipSelected);
     els.deleteBtn?.addEventListener("click", deleteSelected);
     els.palette?.addEventListener("click", handlePaletteClick);
     els.widthInput?.addEventListener("input", updateActiveSize);
@@ -269,14 +272,17 @@
   function rotateSelected() {
     const item = getSelected();
     if (!item) return;
-    if (item.type === "door") {
-      item.flip = !item.flip;
-      render();
-      return;
-    }
+    if (item.type === "door") return;
     item.rotation = item.rotation === 90 ? 0 : 90;
     keepItemInsideRoom(item);
     syncSizeControls();
+    render();
+  }
+
+  function flipSelected() {
+    const item = getSelected();
+    if (!item || (item.type !== "door" && item.type !== "glassDoor")) return;
+    item.flip = !item.flip;
     render();
   }
 
@@ -294,9 +300,10 @@
   function updateSelectionActions() {
     const item = getSelected();
     const disabled = !item;
-    if (els.rotateBtn) els.rotateBtn.disabled = disabled;
+    if (els.rotateBtn) els.rotateBtn.disabled = disabled || item?.type === "door";
+    if (els.flipBtn) els.flipBtn.disabled = disabled || (item?.type !== "door" && item?.type !== "glassDoor");
     if (els.deleteBtn) els.deleteBtn.disabled = disabled;
-    if (els.rotateBtn) els.rotateBtn.textContent = item?.type === "door" ? "გაღების მხარე" : "↻ 90°";
+    if (els.rotateBtn) els.rotateBtn.textContent = "↻ 90°";
   }
 
   function updateSelection(id) {
@@ -312,9 +319,12 @@
       els.sizeTitle.textContent = `${config.label} - ზომა`;
       els.sizeHint.textContent = item.type === "door"
         ? "კარი მხოლოდ კედელზე მოძრაობს. ღილაკით გაღების მხარეს შეცვლი."
-        : "ჩაწერე ზომა ან ნახაზზე კუთხის მრგვალი სახელური მოქაჩე.";
-      els.widthLabel.textContent = item.type === "glass" ? "სიგრძე (სმ)" : item.type === "door" ? "კარის სიგანე (სმ)" : "სიგანე (სმ)";
-      els.heightLabel.textContent = item.type === "glass" ? "ხაზის სისქე (სმ)" : item.type === "door" ? "კედლის სისქე (სმ)" : "სიგრძე (სმ)";
+        : item.type === "glassDoor"
+          ? "შუშის კარი თავისუფლად მოძრაობს. შეგიძლია მოატრიალო და გაღების მხარე შეცვალო."
+          : "ჩაწერე ზომა ან ნახაზზე კუთხის მრგვალი სახელური მოქაჩე.";
+      const isGlassLine = item.type === "glass" || item.type === "glassDoor";
+      els.widthLabel.textContent = isGlassLine ? "სიგრძე (სმ)" : item.type === "door" ? "კარის სიგანე (სმ)" : "სიგანე (სმ)";
+      els.heightLabel.textContent = isGlassLine ? "ხაზის სისქე (სმ)" : item.type === "door" ? "კედლის სისქე (სმ)" : "სიგრძე (სმ)";
       els.widthInput.min = "2";
       els.heightInput.min = "2";
       els.widthInput.max = String(item.rotation === 90 ? model.heightCm : model.widthCm);
@@ -638,6 +648,10 @@
       drawDoor(context, room, item, selected, interactive);
       return;
     }
+    if (item.type === "glassDoor") {
+      drawGlassDoor(context, room, item, selected, interactive);
+      return;
+    }
 
     context.save();
     context.fillStyle = hexToRgba(config.color, item.type === "floorFill" ? 0.2 : 0.4);
@@ -682,6 +696,66 @@
       context.setLineDash([6, 4]);
       context.strokeRect(x - 4, y - 4, width + 8, height + 8);
       context.setLineDash([]);
+      const handle = getResizeHandle(room, item);
+      context.fillStyle = "#ffffff";
+      context.strokeStyle = "#17211f";
+      context.lineWidth = 2;
+      context.beginPath();
+      context.arc(handle.x, handle.y, 7, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+    }
+    context.restore();
+  }
+
+  function drawGlassDoor(context, room, item, selected, interactive) {
+    const color = ITEM_TYPES.glassDoor.color;
+    const length = item.rotation === 90
+      ? room.height * (item.widthCm / model.heightCm)
+      : room.width * (item.widthCm / model.widthCm);
+    const centerX = room.x + room.width * item.x;
+    const centerY = room.y + room.height * item.y;
+    let hingeX = centerX;
+    let hingeY = centerY;
+    let closedAngle;
+    let openAngle;
+    let anticlockwise;
+
+    if (item.rotation === 90) {
+      hingeY = centerY + (item.flip ? length / 2 : -length / 2);
+      closedAngle = item.flip ? -Math.PI / 2 : Math.PI / 2;
+      openAngle = 0;
+      anticlockwise = !item.flip;
+    } else {
+      hingeX = centerX + (item.flip ? length / 2 : -length / 2);
+      closedAngle = item.flip ? Math.PI : 0;
+      openAngle = Math.PI / 2;
+      anticlockwise = item.flip;
+    }
+
+    const closedX = hingeX + Math.cos(closedAngle) * length;
+    const closedY = hingeY + Math.sin(closedAngle) * length;
+
+    context.save();
+    context.strokeStyle = color;
+    context.lineWidth = interactive ? 3 : 5;
+    context.beginPath();
+    context.moveTo(hingeX, hingeY);
+    context.lineTo(closedX, closedY);
+    context.stroke();
+
+    context.setLineDash(interactive ? [5, 4] : [9, 7]);
+    context.beginPath();
+    context.arc(hingeX, hingeY, length, closedAngle, openAngle, anticlockwise);
+    context.stroke();
+    context.setLineDash([]);
+
+    context.fillStyle = color;
+    context.beginPath();
+    context.arc(hingeX, hingeY, interactive ? 3 : 5, 0, Math.PI * 2);
+    context.fill();
+
+    if (selected && interactive) {
       const handle = getResizeHandle(room, item);
       context.fillStyle = "#ffffff";
       context.strokeStyle = "#17211f";
@@ -799,7 +873,7 @@
       context.fillStyle = hexToRgba(entry.color, 0.5);
       context.strokeStyle = entry.color;
       context.lineWidth = interactive ? 1 : 2;
-      if (entry.type === "glass") {
+      if (entry.type === "glass" || entry.type === "glassDoor") {
         context.beginPath();
         context.moveTo(x, y + swatch / 2);
         context.lineTo(x + swatch, y + swatch / 2);

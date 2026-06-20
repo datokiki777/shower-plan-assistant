@@ -280,6 +280,10 @@ select:focus {
   gap: 12px;
 }
 
+.sketch-selection-actions {
+  flex-wrap: wrap;
+}
+
 .sketch-card-head p {
   margin: 4px 0 0;
   color: var(--muted);
@@ -434,7 +438,7 @@ select:focus {
 }
 
 .selected-tools button {
-  flex: 1 1 0;
+  flex: 1 1 95px;
 }
 
 .sketch-stage-wrap {
