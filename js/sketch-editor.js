@@ -25,6 +25,7 @@
     return {
       widthCm: DEFAULT_ROOM.widthCm,
       heightCm: DEFAULT_ROOM.heightCm,
+      note: "",
       items: []
     };
   }
@@ -38,6 +39,7 @@
     return {
       widthCm: clampNumber(source.widthCm, 100, 1500, DEFAULT_ROOM.widthCm),
       heightCm: clampNumber(source.heightCm, 100, 1500, DEFAULT_ROOM.heightCm),
+      note: String(source.note || "").trim(),
       items: Array.isArray(source.items)
         ? source.items
             .filter((item) => ITEM_TYPES[item.type])
@@ -64,6 +66,7 @@
     const sketch = normalize(data);
     return (
       sketch.items.length > 0 ||
+      Boolean(sketch.note) ||
       sketch.widthCm !== DEFAULT_ROOM.widthCm ||
       sketch.heightCm !== DEFAULT_ROOM.heightCm
     );
@@ -86,6 +89,7 @@
     els.sizeHint = document.querySelector("#sketchSizeHint");
     els.widthLabel = document.querySelector("#sketchWidthLabel");
     els.heightLabel = document.querySelector("#sketchHeightLabel");
+    els.noteInput = document.querySelector("#sketchNoteInput");
   }
 
   function init(options = {}) {
@@ -103,6 +107,10 @@
     els.palette?.addEventListener("click", handlePaletteClick);
     els.widthInput?.addEventListener("input", updateActiveSize);
     els.heightInput?.addEventListener("input", updateActiveSize);
+    els.noteInput?.addEventListener("input", () => {
+      model.note = els.noteInput.value;
+      render();
+    });
 
     els.canvas.addEventListener("pointerdown", pointerDown);
     els.canvas.addEventListener("pointermove", pointerMove);
@@ -118,6 +126,7 @@
     model = normalize(data);
     originalModel = clone(model);
     selectedId = null;
+    els.noteInput.value = model.note;
     updateSelection(null);
 
     if (typeof els.dialog.showModal === "function") {
@@ -151,6 +160,7 @@
   function clear() {
     model = emptyModel();
     selectedId = null;
+    els.noteInput.value = "";
     updateSelection(null);
     render();
   }
@@ -395,8 +405,10 @@
     const cssHeight = exportHeight || Math.max(320, canvas.clientHeight);
     const padding = exportWidth ? 80 : Math.max(42, Math.min(68, cssWidth * 0.08));
     const legendHeight = estimateLegendHeight(cssWidth - padding * 2, Boolean(exportWidth));
+    const noteHeight = estimateNoteHeight(cssWidth - padding * 2, Boolean(exportWidth));
+    const bottomHeight = legendHeight + noteHeight;
     const availableWidth = cssWidth - padding * 2;
-    const availableHeight = cssHeight - padding * 2 - legendHeight;
+    const availableHeight = cssHeight - padding * 2 - bottomHeight;
     const ratio = model.widthCm / model.heightCm;
     let roomWidth = availableWidth;
     let roomHeight = roomWidth / ratio;
@@ -413,7 +425,8 @@
         width: roomWidth,
         height: roomHeight
       },
-      legendY: cssHeight - padding - legendHeight + (exportWidth ? 22 : 12),
+      legendY: cssHeight - padding - bottomHeight + (exportWidth ? 22 : 12),
+      noteY: cssHeight - padding - noteHeight + (exportWidth ? 20 : 10),
       legendWidth: availableWidth
     };
   }
@@ -443,6 +456,17 @@
       }
     });
     return rows * rowHeight + (isExport ? 22 : 14);
+  }
+
+  function estimateNoteHeight(width, isExport) {
+    if (!model.note.trim()) return 0;
+    const fontSize = isExport ? 22 : 12;
+    const lineHeight = isExport ? 32 : 18;
+    const charactersPerLine = Math.max(18, Math.floor(width / (fontSize * 0.58)));
+    const lines = model.note.split(/\r?\n/).reduce((total, line) => {
+      return total + Math.max(1, Math.ceil(line.length / charactersPerLine));
+    }, 0);
+    return lines * lineHeight + (isExport ? 52 : 34);
   }
 
   function sizeCanvas(canvas) {
@@ -488,6 +512,7 @@
 
     model.items.forEach((item) => drawItem(context, view.room, item, interactive && item.id === selectedId, interactive));
     drawLegend(context, view, interactive);
+    drawNote(context, view, interactive);
   }
 
   function drawGrid(context, room) {
@@ -616,6 +641,53 @@
       x += itemWidth;
     });
     context.restore();
+  }
+
+  function drawNote(context, view, interactive) {
+    const note = model.note.trim();
+    if (!note) return;
+    const fontSize = interactive ? 12 : 22;
+    const lineHeight = interactive ? 18 : 32;
+    const labelHeight = interactive ? 18 : 30;
+    const maxWidth = view.legendWidth;
+    let y = view.noteY;
+
+    context.save();
+    context.textAlign = "left";
+    context.textBaseline = "top";
+    context.fillStyle = "#263835";
+    context.font = `800 ${fontSize}px "Segoe UI", Arial, sans-serif`;
+    context.fillText("განმარტება:", view.room.x, y);
+    y += labelHeight;
+    context.font = `500 ${fontSize}px "Segoe UI", Arial, sans-serif`;
+
+    wrapTextLines(context, note, maxWidth).forEach((line) => {
+      context.fillText(line, view.room.x, y);
+      y += lineHeight;
+    });
+    context.restore();
+  }
+
+  function wrapTextLines(context, text, maxWidth) {
+    const lines = [];
+    text.split(/\r?\n/).forEach((paragraph) => {
+      if (!paragraph.trim()) {
+        lines.push("");
+        return;
+      }
+      let line = "";
+      paragraph.trim().split(/\s+/).forEach((word) => {
+        const candidate = line ? `${line} ${word}` : word;
+        if (line && context.measureText(candidate).width > maxWidth) {
+          lines.push(line);
+          line = word;
+        } else {
+          line = candidate;
+        }
+      });
+      if (line) lines.push(line);
+    });
+    return lines;
   }
 
   function hexToRgba(hex, alpha) {
