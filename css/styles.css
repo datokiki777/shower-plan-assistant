@@ -396,6 +396,14 @@ select:focus {
   font-size: 15px;
 }
 
+.sketch-size-hint {
+  min-height: 32px;
+  margin: -4px 0 10px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 .sketch-palette {
   display: grid;
   width: 100%;
@@ -420,7 +428,7 @@ select:focus {
   width: 15px;
   height: 15px;
   flex: 0 0 15px;
-  border: 2px solid rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(0, 0, 0, 0.34);
   border-radius: 3px;
   background: var(--swatch);
 }

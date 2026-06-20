@@ -110,26 +110,27 @@
       <div class="sketch-editor-body">
         <aside class="sketch-tools">
           <section class="sketch-tool-section">
-            <h3>ოთახის ზომა</h3>
+            <h3 id="sketchSizeTitle">ოთახის ზომა</h3>
+            <p id="sketchSizeHint" class="sketch-size-hint">ცარიელ ადგილზე დაჭერით ოთახის ზომებზე დაბრუნდები.</p>
             <div class="two-col">
-              <label>სიგანე (სმ)<input id="roomWidthInput" type="number" min="100" max="1500" step="1" value="300" /></label>
-              <label>სიგრძე (სმ)<input id="roomHeightInput" type="number" min="100" max="1500" step="1" value="250" /></label>
+              <label><span id="sketchWidthLabel">სიგანე (სმ)</span><input id="roomWidthInput" type="number" min="1" max="1500" step="1" value="300" /></label>
+              <label><span id="sketchHeightLabel">სიგრძე (სმ)</span><input id="roomHeightInput" type="number" min="1" max="1500" step="1" value="250" /></label>
             </div>
           </section>
 
           <section class="sketch-tool-section">
             <h3>ელემენტები</h3>
             <div id="sketchPalette" class="sketch-palette">
-              <button type="button" data-sketch-type="door"><span style="--swatch:#e4a72e"></span>კარი</button>
-              <button type="button" data-sketch-type="window"><span style="--swatch:#3182ce"></span>ფანჯარა</button>
-              <button type="button" data-sketch-type="shower"><span style="--swatch:#22a6b3"></span>დუშთასე</button>
-              <button type="button" data-sketch-type="toilet"><span style="--swatch:#805ad5"></span>ტუალეტი</button>
-              <button type="button" data-sketch-type="sink"><span style="--swatch:#209486"></span>ხელსაბანი</button>
-              <button type="button" data-sketch-type="radiator"><span style="--swatch:#d65353"></span>რადიატორი</button>
-              <button type="button" data-sketch-type="glass"><span style="--swatch:#718096"></span>შუშა (ESG)</button>
-              <button type="button" data-sketch-type="outerNiche"><span style="--swatch:#dd6b20"></span>უჯრა გარეთ</button>
-              <button type="button" data-sketch-type="innerNiche"><span style="--swatch:#9c6b30"></span>უჯრა შიგნით</button>
-              <button type="button" data-sketch-type="floorFill"><span style="--swatch:#5a9d55"></span>იატაკის ამოვსება</button>
+              <button type="button" data-sketch-type="door"><span style="--swatch:#c79a45"></span>კარი</button>
+              <button type="button" data-sketch-type="window"><span style="--swatch:#5b8db8"></span>ფანჯარა</button>
+              <button type="button" data-sketch-type="shower"><span style="--swatch:#5ca8ad"></span>დუშთასე</button>
+              <button type="button" data-sketch-type="toilet"><span style="--swatch:#8b78b5"></span>ტუალეტი</button>
+              <button type="button" data-sketch-type="sink"><span style="--swatch:#4f968d"></span>ხელსაბანი</button>
+              <button type="button" data-sketch-type="radiator"><span style="--swatch:#bd6b6b"></span>რადიატორი</button>
+              <button type="button" data-sketch-type="glass"><span style="--swatch:#7d8b96"></span>შუშა (ESG)</button>
+              <button type="button" data-sketch-type="outerNiche"><span style="--swatch:#c48454"></span>უჯრა გარეთ</button>
+              <button type="button" data-sketch-type="innerNiche"><span style="--swatch:#9d7a51"></span>უჯრა შიგნით</button>
+              <button type="button" data-sketch-type="floorFill"><span style="--swatch:#79a471"></span>იატაკის ამოვსება</button>
             </div>
           </section>
 

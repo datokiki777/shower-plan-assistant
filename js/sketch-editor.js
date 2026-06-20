@@ -1,16 +1,16 @@
 (() => {
   const DEFAULT_ROOM = { widthCm: 300, heightCm: 250 };
   const ITEM_TYPES = {
-    door: { label: "კარი", color: "#e4a72e", width: 0.18, height: 0.055 },
-    window: { label: "ფანჯარა", color: "#3182ce", width: 0.22, height: 0.045 },
-    shower: { label: "დუშთასე", color: "#22a6b3", width: 0.3, height: 0.24 },
-    toilet: { label: "ტუალეტი", color: "#805ad5", width: 0.16, height: 0.22 },
-    sink: { label: "ხელსაბანი", color: "#209486", width: 0.2, height: 0.14 },
-    radiator: { label: "რადიატორი", color: "#d65353", width: 0.18, height: 0.07 },
-    glass: { label: "შუშა ESG", color: "#718096", width: 0.25, height: 0.035 },
-    outerNiche: { label: "უჯრა გარეთ", color: "#dd6b20", width: 0.2, height: 0.11 },
-    innerNiche: { label: "უჯრა შიგნით", color: "#9c6b30", width: 0.2, height: 0.11 },
-    floorFill: { label: "იატაკის ამოვსება", color: "#5a9d55", width: 0.34, height: 0.22 }
+    door: { label: "კარი", color: "#c79a45", widthCm: 80, heightCm: 10 },
+    window: { label: "ფანჯარა", color: "#5b8db8", widthCm: 100, heightCm: 10 },
+    shower: { label: "დუშთასე", color: "#5ca8ad", widthCm: 120, heightCm: 90 },
+    toilet: { label: "ტუალეტი", color: "#8b78b5", widthCm: 40, heightCm: 65 },
+    sink: { label: "ხელსაბანი", color: "#4f968d", widthCm: 60, heightCm: 45 },
+    radiator: { label: "რადიატორი", color: "#bd6b6b", widthCm: 80, heightCm: 15 },
+    glass: { label: "შუშა (ESG)", color: "#7d8b96", widthCm: 100, heightCm: 2 },
+    outerNiche: { label: "უჯრა გარეთ", color: "#c48454", widthCm: 60, heightCm: 30 },
+    innerNiche: { label: "უჯრა შიგნით", color: "#9d7a51", widthCm: 60, heightCm: 30 },
+    floorFill: { label: "იატაკის ამოვსება", color: "#79a471", widthCm: 120, heightCm: 90 }
   };
 
   const els = {};
@@ -46,7 +46,9 @@
               type: item.type,
               x: clampNumber(item.x, 0, 1, 0.5),
               y: clampNumber(item.y, 0, 1, 0.5),
-              rotation: Number(item.rotation) === 90 ? 90 : 0
+              rotation: Number(item.rotation) === 90 ? 90 : 0,
+              widthCm: clampNumber(item.widthCm, 2, 1500, ITEM_TYPES[item.type].widthCm),
+              heightCm: clampNumber(item.heightCm, 2, 1500, ITEM_TYPES[item.type].heightCm)
             }))
         : []
     };
@@ -80,6 +82,10 @@
     els.palette = document.querySelector("#sketchPalette");
     els.widthInput = document.querySelector("#roomWidthInput");
     els.heightInput = document.querySelector("#roomHeightInput");
+    els.sizeTitle = document.querySelector("#sketchSizeTitle");
+    els.sizeHint = document.querySelector("#sketchSizeHint");
+    els.widthLabel = document.querySelector("#sketchWidthLabel");
+    els.heightLabel = document.querySelector("#sketchHeightLabel");
   }
 
   function init(options = {}) {
@@ -95,8 +101,8 @@
     els.rotateBtn?.addEventListener("click", rotateSelected);
     els.deleteBtn?.addEventListener("click", deleteSelected);
     els.palette?.addEventListener("click", handlePaletteClick);
-    els.widthInput?.addEventListener("input", updateRoomSize);
-    els.heightInput?.addEventListener("input", updateRoomSize);
+    els.widthInput?.addEventListener("input", updateActiveSize);
+    els.heightInput?.addEventListener("input", updateActiveSize);
 
     els.canvas.addEventListener("pointerdown", pointerDown);
     els.canvas.addEventListener("pointermove", pointerMove);
@@ -112,9 +118,7 @@
     model = normalize(data);
     originalModel = clone(model);
     selectedId = null;
-    els.widthInput.value = model.widthCm;
-    els.heightInput.value = model.heightCm;
-    updateSelectionActions();
+    updateSelection(null);
 
     if (typeof els.dialog.showModal === "function") {
       els.dialog.showModal();
@@ -147,15 +151,23 @@
   function clear() {
     model = emptyModel();
     selectedId = null;
-    els.widthInput.value = model.widthCm;
-    els.heightInput.value = model.heightCm;
-    updateSelectionActions();
+    updateSelection(null);
     render();
   }
 
-  function updateRoomSize() {
-    model.widthCm = clampNumber(els.widthInput.value, 100, 1500, DEFAULT_ROOM.widthCm);
-    model.heightCm = clampNumber(els.heightInput.value, 100, 1500, DEFAULT_ROOM.heightCm);
+  function updateActiveSize() {
+    const item = getSelected();
+    if (item) {
+      const maxWidth = item.rotation === 90 ? model.heightCm : model.widthCm;
+      const maxHeight = item.rotation === 90 ? model.widthCm : model.heightCm;
+      item.widthCm = clampNumber(els.widthInput.value, 2, maxWidth, item.widthCm);
+      item.heightCm = clampNumber(els.heightInput.value, 2, maxHeight, item.heightCm);
+      keepItemInsideRoom(item);
+    } else {
+      model.widthCm = clampNumber(els.widthInput.value, 100, 1500, DEFAULT_ROOM.widthCm);
+      model.heightCm = clampNumber(els.heightInput.value, 100, 1500, DEFAULT_ROOM.heightCm);
+      model.items.forEach(keepItemInsideRoom);
+    }
     render();
   }
 
@@ -182,11 +194,12 @@
       type,
       x,
       y,
-      rotation: 0
+      rotation: 0,
+      widthCm: ITEM_TYPES[type].widthCm,
+      heightCm: ITEM_TYPES[type].heightCm
     };
     model.items.push(item);
-    selectedId = item.id;
-    updateSelectionActions();
+    updateSelection(item.id);
     render();
   }
 
@@ -194,14 +207,15 @@
     const item = getSelected();
     if (!item) return;
     item.rotation = item.rotation === 90 ? 0 : 90;
+    keepItemInsideRoom(item);
+    syncSizeControls();
     render();
   }
 
   function deleteSelected() {
     if (!selectedId) return;
     model.items = model.items.filter((item) => item.id !== selectedId);
-    selectedId = null;
-    updateSelectionActions();
+    updateSelection(null);
     render();
   }
 
@@ -215,15 +229,60 @@
     if (els.deleteBtn) els.deleteBtn.disabled = disabled;
   }
 
+  function updateSelection(id) {
+    selectedId = id;
+    updateSelectionActions();
+    syncSizeControls();
+  }
+
+  function syncSizeControls() {
+    const item = getSelected();
+    if (item) {
+      const config = ITEM_TYPES[item.type];
+      els.sizeTitle.textContent = `${config.label} - ზომა`;
+      els.sizeHint.textContent = "ჩაწერე ზომა ან ნახაზზე კუთხის მრგვალი სახელური მოქაჩე.";
+      els.widthLabel.textContent = item.type === "glass" ? "სიგრძე (სმ)" : "სიგანე (სმ)";
+      els.heightLabel.textContent = item.type === "glass" ? "ხაზის სისქე (სმ)" : "სიგრძე (სმ)";
+      els.widthInput.min = "2";
+      els.heightInput.min = "2";
+      els.widthInput.max = String(item.rotation === 90 ? model.heightCm : model.widthCm);
+      els.heightInput.max = String(item.rotation === 90 ? model.widthCm : model.heightCm);
+      els.widthInput.value = Math.round(item.widthCm);
+      els.heightInput.value = Math.round(item.heightCm);
+      return;
+    }
+
+    els.sizeTitle.textContent = "ოთახის ზომა";
+    els.sizeHint.textContent = "ცარიელ ადგილზე დაჭერით ოთახის ზომებზე დაბრუნდები.";
+    els.widthLabel.textContent = "სიგანე (სმ)";
+    els.heightLabel.textContent = "სიგრძე (სმ)";
+    els.widthInput.min = "100";
+    els.heightInput.min = "100";
+    els.widthInput.max = "1500";
+    els.heightInput.max = "1500";
+    els.widthInput.value = Math.round(model.widthCm);
+    els.heightInput.value = Math.round(model.heightCm);
+  }
+
   function pointerDown(event) {
+    event.preventDefault();
     const view = getView(els.canvas);
     const point = pointerPoint(event, view);
+    const selected = getSelected();
+
+    if (selected && hitResizeHandle(event, view, selected)) {
+      drag = { mode: "resize", id: selected.id };
+      els.canvas.setPointerCapture(event.pointerId);
+      els.canvas.classList.add("is-dragging");
+      return;
+    }
+
     const item = hitTest(point, view);
-    selectedId = item?.id || null;
-    updateSelectionActions();
+    updateSelection(item?.id || null);
 
     if (item) {
       drag = {
+        mode: "move",
         id: item.id,
         dx: point.x - item.x,
         dy: point.y - item.y
@@ -236,18 +295,34 @@
 
   function pointerMove(event) {
     if (!drag) return;
+    event.preventDefault();
     const view = getView(els.canvas);
     const point = pointerPoint(event, view);
     const item = model.items.find((entry) => entry.id === drag.id);
     if (!item) return;
 
-    const size = getItemSize(item);
-    item.x = Math.min(1 - size.width / 2, Math.max(size.width / 2, point.x - drag.dx));
-    item.y = Math.min(1 - size.height / 2, Math.max(size.height / 2, point.y - drag.dy));
+    if (drag.mode === "resize") {
+      const visualWidthCm = clampNumber(Math.abs(point.x - item.x) * 2 * model.widthCm, 2, model.widthCm, item.widthCm);
+      const visualHeightCm = clampNumber(Math.abs(point.y - item.y) * 2 * model.heightCm, 2, model.heightCm, item.heightCm);
+      if (item.rotation === 90) {
+        item.widthCm = visualHeightCm;
+        item.heightCm = visualWidthCm;
+      } else {
+        item.widthCm = visualWidthCm;
+        item.heightCm = visualHeightCm;
+      }
+      keepItemInsideRoom(item);
+      syncSizeControls();
+    } else {
+      item.x = point.x - drag.dx;
+      item.y = point.y - drag.dy;
+      keepItemInsideRoom(item);
+    }
     render();
   }
 
   function pointerUp(event) {
+    event.preventDefault();
     if (drag && els.canvas.hasPointerCapture(event.pointerId)) {
       els.canvas.releasePointerCapture(event.pointerId);
     }
@@ -263,15 +338,17 @@
     };
   }
 
-  function hitTest(point) {
+  function hitTest(point, view) {
     for (let index = model.items.length - 1; index >= 0; index -= 1) {
       const item = model.items[index];
       const size = getItemSize(item);
+      const width = Math.max(size.width, 20 / view.room.width);
+      const height = Math.max(size.height, 20 / view.room.height);
       if (
-        point.x >= item.x - size.width / 2 &&
-        point.x <= item.x + size.width / 2 &&
-        point.y >= item.y - size.height / 2 &&
-        point.y <= item.y + size.height / 2
+        point.x >= item.x - width / 2 &&
+        point.x <= item.x + width / 2 &&
+        point.y >= item.y - height / 2 &&
+        point.y <= item.y + height / 2
       ) {
         return item;
       }
@@ -280,18 +357,46 @@
   }
 
   function getItemSize(item) {
-    const config = ITEM_TYPES[item.type];
+    const width = Math.min(1, item.widthCm / model.widthCm);
+    const height = Math.min(1, item.heightCm / model.heightCm);
     return item.rotation === 90
-      ? { width: config.height, height: config.width }
-      : { width: config.width, height: config.height };
+      ? { width: height, height: width }
+      : { width, height };
+  }
+
+  function keepItemInsideRoom(item) {
+    const maxWidth = item.rotation === 90 ? model.heightCm : model.widthCm;
+    const maxHeight = item.rotation === 90 ? model.widthCm : model.heightCm;
+    item.widthCm = Math.min(item.widthCm, maxWidth);
+    item.heightCm = Math.min(item.heightCm, maxHeight);
+    const size = getItemSize(item);
+    item.x = Math.min(1 - size.width / 2, Math.max(size.width / 2, item.x));
+    item.y = Math.min(1 - size.height / 2, Math.max(size.height / 2, item.y));
+  }
+
+  function hitResizeHandle(event, view, item) {
+    const handle = getResizeHandle(view.room, item);
+    const rect = els.canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    return Math.hypot(x - handle.x, y - handle.y) <= 18;
+  }
+
+  function getResizeHandle(room, item) {
+    const size = getItemSize(item);
+    return {
+      x: room.x + room.width * (item.x + size.width / 2),
+      y: room.y + room.height * (item.y + size.height / 2)
+    };
   }
 
   function getView(canvas, exportWidth, exportHeight) {
     const cssWidth = exportWidth || Math.max(320, canvas.clientWidth);
     const cssHeight = exportHeight || Math.max(320, canvas.clientHeight);
     const padding = exportWidth ? 80 : Math.max(42, Math.min(68, cssWidth * 0.08));
+    const legendHeight = estimateLegendHeight(cssWidth - padding * 2, Boolean(exportWidth));
     const availableWidth = cssWidth - padding * 2;
-    const availableHeight = cssHeight - padding * 2;
+    const availableHeight = cssHeight - padding * 2 - legendHeight;
     const ratio = model.widthCm / model.heightCm;
     let roomWidth = availableWidth;
     let roomHeight = roomWidth / ratio;
@@ -304,11 +409,40 @@
       height: cssHeight,
       room: {
         x: (cssWidth - roomWidth) / 2,
-        y: (cssHeight - roomHeight) / 2,
+        y: padding + (availableHeight - roomHeight) / 2,
         width: roomWidth,
         height: roomHeight
-      }
+      },
+      legendY: cssHeight - padding - legendHeight + (exportWidth ? 22 : 12),
+      legendWidth: availableWidth
     };
+  }
+
+  function getLegendEntries() {
+    const used = new Set(model.items.map((item) => item.type));
+    return Object.entries(ITEM_TYPES)
+      .filter(([type]) => used.has(type))
+      .map(([type, config]) => ({ type, ...config }));
+  }
+
+  function estimateLegendHeight(width, isExport) {
+    const entries = getLegendEntries();
+    if (!entries.length) return 0;
+    const fontSize = isExport ? 21 : 12;
+    const rowHeight = isExport ? 38 : 25;
+    const swatch = isExport ? 22 : 13;
+    let rows = 1;
+    let usedWidth = 0;
+    entries.forEach((entry) => {
+      const itemWidth = swatch + 10 + entry.label.length * fontSize * 0.58 + (isExport ? 28 : 18);
+      if (usedWidth && usedWidth + itemWidth > width) {
+        rows += 1;
+        usedWidth = itemWidth;
+      } else {
+        usedWidth += itemWidth;
+      }
+    });
+    return rows * rowHeight + (isExport ? 22 : 14);
   }
 
   function sizeCanvas(canvas) {
@@ -339,7 +473,7 @@
 
     drawGrid(context, view.room);
     context.strokeStyle = "#111111";
-    context.lineWidth = interactive ? 5 : 8;
+    context.lineWidth = interactive ? 3 : 5;
     context.strokeRect(view.room.x, view.room.y, view.room.width, view.room.height);
 
     context.fillStyle = "#111111";
@@ -353,6 +487,7 @@
     context.restore();
 
     model.items.forEach((item) => drawItem(context, view.room, item, interactive && item.id === selectedId, interactive));
+    drawLegend(context, view, interactive);
   }
 
   function drawGrid(context, room) {
@@ -387,9 +522,9 @@
     const y = room.y + room.height * item.y - height / 2;
 
     context.save();
-    context.fillStyle = hexToRgba(config.color, item.type === "floorFill" ? 0.42 : 0.78);
-    context.strokeStyle = selected ? "#111111" : config.color;
-    context.lineWidth = selected ? (interactive ? 4 : 6) : (interactive ? 2.5 : 4);
+    context.fillStyle = hexToRgba(config.color, item.type === "floorFill" ? 0.2 : 0.4);
+    context.strokeStyle = config.color;
+    context.lineWidth = interactive ? 1.5 : 2.5;
 
     if (item.type === "toilet" || item.type === "sink") {
       context.beginPath();
@@ -397,19 +532,21 @@
       context.fill();
       context.stroke();
     } else if (item.type === "glass") {
-      context.fillRect(x, y, width, height);
-      context.strokeRect(x, y, width, height);
       context.beginPath();
-      context.moveTo(x + width * 0.2, y);
-      context.lineTo(x + width * 0.35, y + height);
-      context.moveTo(x + width * 0.55, y);
-      context.lineTo(x + width * 0.7, y + height);
+      context.lineWidth = interactive ? 3 : 5;
+      if (item.rotation === 90) {
+        context.moveTo(x + width / 2, y);
+        context.lineTo(x + width / 2, y + height);
+      } else {
+        context.moveTo(x, y + height / 2);
+        context.lineTo(x + width, y + height / 2);
+      }
       context.stroke();
     } else if (item.type === "floorFill") {
       context.fillRect(x, y, width, height);
       context.strokeRect(x, y, width, height);
       context.strokeStyle = config.color;
-      context.lineWidth = interactive ? 1.5 : 3;
+      context.lineWidth = interactive ? 1 : 2;
       for (let offset = -height; offset < width; offset += Math.max(10, width / 8)) {
         context.beginPath();
         context.moveTo(x + Math.max(0, offset), y + Math.max(0, -offset));
@@ -421,31 +558,64 @@
       context.strokeRect(x, y, width, height);
     }
 
-    const fontSize = interactive ? Math.max(9, Math.min(13, width / 8)) : Math.max(16, Math.min(24, width / 8));
-    context.fillStyle = "#101817";
-    context.font = `800 ${fontSize}px "Segoe UI", Arial, sans-serif`;
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    drawWrappedText(context, config.label, x + width / 2, y + height / 2, Math.max(width - 8, 40), fontSize * 1.05);
+    if (selected && interactive) {
+      context.strokeStyle = "#17211f";
+      context.lineWidth = 1.5;
+      context.setLineDash([6, 4]);
+      context.strokeRect(x - 4, y - 4, width + 8, height + 8);
+      context.setLineDash([]);
+      const handle = getResizeHandle(room, item);
+      context.fillStyle = "#ffffff";
+      context.strokeStyle = "#17211f";
+      context.lineWidth = 2;
+      context.beginPath();
+      context.arc(handle.x, handle.y, 7, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+    }
     context.restore();
   }
 
-  function drawWrappedText(context, text, x, y, maxWidth, lineHeight) {
-    const words = text.split(" ");
-    const lines = [];
-    let line = "";
-    words.forEach((word) => {
-      const test = line ? `${line} ${word}` : word;
-      if (context.measureText(test).width > maxWidth && line) {
-        lines.push(line);
-        line = word;
-      } else {
-        line = test;
+  function drawLegend(context, view, interactive) {
+    const entries = getLegendEntries();
+    if (!entries.length) return;
+    const fontSize = interactive ? 12 : 21;
+    const rowHeight = interactive ? 25 : 38;
+    const swatch = interactive ? 13 : 22;
+    let x = view.room.x;
+    let y = view.legendY;
+
+    context.save();
+    context.font = `700 ${fontSize}px "Segoe UI", Arial, sans-serif`;
+    context.textAlign = "left";
+    context.textBaseline = "middle";
+
+    entries.forEach((entry) => {
+      const textWidth = context.measureText(entry.label).width;
+      const itemWidth = swatch + 10 + textWidth + (interactive ? 18 : 28);
+      if (x > view.room.x && x + itemWidth > view.room.x + view.legendWidth) {
+        x = view.room.x;
+        y += rowHeight;
       }
+
+      context.fillStyle = hexToRgba(entry.color, 0.5);
+      context.strokeStyle = entry.color;
+      context.lineWidth = interactive ? 1 : 2;
+      if (entry.type === "glass") {
+        context.beginPath();
+        context.moveTo(x, y + swatch / 2);
+        context.lineTo(x + swatch, y + swatch / 2);
+        context.stroke();
+      } else {
+        context.fillRect(x, y, swatch, swatch);
+        context.strokeRect(x, y, swatch, swatch);
+      }
+
+      context.fillStyle = "#263835";
+      context.fillText(entry.label, x + swatch + 8, y + swatch / 2);
+      x += itemWidth;
     });
-    if (line) lines.push(line);
-    const startY = y - ((lines.length - 1) * lineHeight) / 2;
-    lines.forEach((entry, index) => context.fillText(entry, x, startY + index * lineHeight));
+    context.restore();
   }
 
   function hexToRgba(hex, alpha) {
