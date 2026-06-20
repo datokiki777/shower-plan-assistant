@@ -36,9 +36,11 @@
 
   function normalize(data) {
     const source = data && typeof data === "object" ? data : {};
+    const widthCm = clampNumber(source.widthCm, 100, 1500, DEFAULT_ROOM.widthCm);
+    const heightCm = clampNumber(source.heightCm, 100, 1500, DEFAULT_ROOM.heightCm);
     return {
-      widthCm: clampNumber(source.widthCm, 100, 1500, DEFAULT_ROOM.widthCm),
-      heightCm: clampNumber(source.heightCm, 100, 1500, DEFAULT_ROOM.heightCm),
+      widthCm,
+      heightCm,
       note: String(source.note || "").trim(),
       items: Array.isArray(source.items)
         ? source.items
@@ -50,8 +52,11 @@
               y: clampNumber(item.y, 0, 1, 0.5),
               rotation: Number(item.rotation) === 90 ? 90 : 0,
               widthCm: clampNumber(item.widthCm, 2, 1500, ITEM_TYPES[item.type].widthCm),
-              heightCm: clampNumber(item.heightCm, 2, 1500, ITEM_TYPES[item.type].heightCm)
+              heightCm: clampNumber(item.heightCm, 2, 1500, ITEM_TYPES[item.type].heightCm),
+              wall: item.type === "door" ? normalizeDoorWall(item.wall, item.x, item.y) : null,
+              flip: item.type === "door" ? Boolean(item.flip) : false
             }))
+            .map((item) => (item.type === "door" ? snapDoorToWall(item, item.wall, widthCm, heightCm) : item))
         : []
     };
   }
@@ -60,6 +65,46 @@
     const number = Number(value);
     if (!Number.isFinite(number)) return fallback;
     return Math.min(max, Math.max(min, number));
+  }
+
+  function normalizeDoorWall(wall, x = 0.5, y = 0.5) {
+    if (["top", "right", "bottom", "left"].includes(wall)) return wall;
+    const distances = [
+      ["top", y],
+      ["right", 1 - x],
+      ["bottom", 1 - y],
+      ["left", x]
+    ];
+    distances.sort((a, b) => a[1] - b[1]);
+    return distances[0][0];
+  }
+
+  function snapDoorToWall(
+    item,
+    wall = normalizeDoorWall(null, item.x, item.y),
+    roomWidthCm = model.widthCm,
+    roomHeightCm = model.heightCm
+  ) {
+    item.wall = wall;
+    item.rotation = wall === "left" || wall === "right" ? 90 : 0;
+    const half = getDoorHalfSpan(item, wall, roomWidthCm, roomHeightCm);
+    if (wall === "top" || wall === "bottom") {
+      item.x = Math.min(1 - half, Math.max(half, item.x));
+      item.y = wall === "top" ? 0 : 1;
+    } else {
+      item.x = wall === "left" ? 0 : 1;
+      item.y = Math.min(1 - half, Math.max(half, item.y));
+    }
+    return item;
+  }
+
+  function snapDoorToNearestWall(item) {
+    return snapDoorToWall(item, normalizeDoorWall(null, item.x, item.y));
+  }
+
+  function getDoorHalfSpan(item, wall = item.wall, roomWidthCm = model.widthCm, roomHeightCm = model.heightCm) {
+    const roomLength = wall === "top" || wall === "bottom" ? roomWidthCm : roomHeightCm;
+    return Math.min(0.5, item.widthCm / roomLength / 2);
   }
 
   function hasContent(data) {
@@ -172,7 +217,8 @@
       const maxHeight = item.rotation === 90 ? model.widthCm : model.heightCm;
       item.widthCm = clampNumber(els.widthInput.value, 2, maxWidth, item.widthCm);
       item.heightCm = clampNumber(els.heightInput.value, 2, maxHeight, item.heightCm);
-      keepItemInsideRoom(item);
+      if (item.type === "door") snapDoorToWall(item, item.wall);
+      else keepItemInsideRoom(item);
     } else {
       model.widthCm = clampNumber(els.widthInput.value, 100, 1500, DEFAULT_ROOM.widthCm);
       model.heightCm = clampNumber(els.heightInput.value, 100, 1500, DEFAULT_ROOM.heightCm);
@@ -206,8 +252,15 @@
       y,
       rotation: 0,
       widthCm: ITEM_TYPES[type].widthCm,
-      heightCm: ITEM_TYPES[type].heightCm
+      heightCm: ITEM_TYPES[type].heightCm,
+      wall: type === "door" ? "top" : null,
+      flip: false
     };
+    if (type === "door") {
+      item.x = 0.5;
+      item.y = 0;
+      snapDoorToWall(item, "top");
+    }
     model.items.push(item);
     updateSelection(item.id);
     render();
@@ -216,6 +269,11 @@
   function rotateSelected() {
     const item = getSelected();
     if (!item) return;
+    if (item.type === "door") {
+      item.flip = !item.flip;
+      render();
+      return;
+    }
     item.rotation = item.rotation === 90 ? 0 : 90;
     keepItemInsideRoom(item);
     syncSizeControls();
@@ -234,9 +292,11 @@
   }
 
   function updateSelectionActions() {
-    const disabled = !getSelected();
+    const item = getSelected();
+    const disabled = !item;
     if (els.rotateBtn) els.rotateBtn.disabled = disabled;
     if (els.deleteBtn) els.deleteBtn.disabled = disabled;
+    if (els.rotateBtn) els.rotateBtn.textContent = item?.type === "door" ? "გაღების მხარე" : "↻ 90°";
   }
 
   function updateSelection(id) {
@@ -250,9 +310,11 @@
     if (item) {
       const config = ITEM_TYPES[item.type];
       els.sizeTitle.textContent = `${config.label} - ზომა`;
-      els.sizeHint.textContent = "ჩაწერე ზომა ან ნახაზზე კუთხის მრგვალი სახელური მოქაჩე.";
-      els.widthLabel.textContent = item.type === "glass" ? "სიგრძე (სმ)" : "სიგანე (სმ)";
-      els.heightLabel.textContent = item.type === "glass" ? "ხაზის სისქე (სმ)" : "სიგრძე (სმ)";
+      els.sizeHint.textContent = item.type === "door"
+        ? "კარი მხოლოდ კედელზე მოძრაობს. ღილაკით გაღების მხარეს შეცვლი."
+        : "ჩაწერე ზომა ან ნახაზზე კუთხის მრგვალი სახელური მოქაჩე.";
+      els.widthLabel.textContent = item.type === "glass" ? "სიგრძე (სმ)" : item.type === "door" ? "კარის სიგანე (სმ)" : "სიგანე (სმ)";
+      els.heightLabel.textContent = item.type === "glass" ? "ხაზის სისქე (სმ)" : item.type === "door" ? "კედლის სისქე (სმ)" : "სიგრძე (სმ)";
       els.widthInput.min = "2";
       els.heightInput.min = "2";
       els.widthInput.max = String(item.rotation === 90 ? model.heightCm : model.widthCm);
@@ -312,6 +374,15 @@
     if (!item) return;
 
     if (drag.mode === "resize") {
+      if (item.type === "door") {
+        const roomLength = item.wall === "top" || item.wall === "bottom" ? model.widthCm : model.heightCm;
+        const pointerAlongWall = item.wall === "top" || item.wall === "bottom" ? point.x : point.y;
+        item.widthCm = clampNumber(Math.abs(pointerAlongWall - (item.wall === "top" || item.wall === "bottom" ? item.x : item.y)) * 2 * roomLength, 20, roomLength, item.widthCm);
+        snapDoorToWall(item, item.wall);
+        syncSizeControls();
+        render();
+        return;
+      }
       const visualWidthCm = clampNumber(Math.abs(point.x - item.x) * 2 * model.widthCm, 2, model.widthCm, item.widthCm);
       const visualHeightCm = clampNumber(Math.abs(point.y - item.y) * 2 * model.heightCm, 2, model.heightCm, item.heightCm);
       if (item.rotation === 90) {
@@ -326,7 +397,8 @@
     } else {
       item.x = point.x - drag.dx;
       item.y = point.y - drag.dy;
-      keepItemInsideRoom(item);
+      if (item.type === "door") snapDoorToNearestWall(item);
+      else keepItemInsideRoom(item);
     }
     render();
   }
@@ -367,6 +439,18 @@
   }
 
   function getItemSize(item) {
+    if (item.type === "door") {
+      if (item.wall === "left" || item.wall === "right") {
+        return {
+          width: Math.min(1, item.heightCm / model.widthCm),
+          height: Math.min(1, item.widthCm / model.heightCm)
+        };
+      }
+      return {
+        width: Math.min(1, item.widthCm / model.widthCm),
+        height: Math.min(1, item.heightCm / model.heightCm)
+      };
+    }
     const width = Math.min(1, item.widthCm / model.widthCm);
     const height = Math.min(1, item.heightCm / model.heightCm);
     return item.rotation === 90
@@ -375,6 +459,10 @@
   }
 
   function keepItemInsideRoom(item) {
+    if (item.type === "door") {
+      snapDoorToWall(item, item.wall);
+      return;
+    }
     const maxWidth = item.rotation === 90 ? model.heightCm : model.widthCm;
     const maxHeight = item.rotation === 90 ? model.widthCm : model.heightCm;
     item.widthCm = Math.min(item.widthCm, maxWidth);
@@ -546,6 +634,11 @@
     const x = room.x + room.width * item.x - width / 2;
     const y = room.y + room.height * item.y - height / 2;
 
+    if (item.type === "door") {
+      drawDoor(context, room, item, selected, interactive);
+      return;
+    }
+
     context.save();
     context.fillStyle = hexToRgba(config.color, item.type === "floorFill" ? 0.2 : 0.4);
     context.strokeStyle = config.color;
@@ -589,6 +682,86 @@
       context.setLineDash([6, 4]);
       context.strokeRect(x - 4, y - 4, width + 8, height + 8);
       context.setLineDash([]);
+      const handle = getResizeHandle(room, item);
+      context.fillStyle = "#ffffff";
+      context.strokeStyle = "#17211f";
+      context.lineWidth = 2;
+      context.beginPath();
+      context.arc(handle.x, handle.y, 7, 0, Math.PI * 2);
+      context.fill();
+      context.stroke();
+    }
+    context.restore();
+  }
+
+  function drawDoor(context, room, item, selected, interactive) {
+    const color = ITEM_TYPES.door.color;
+    const horizontal = item.wall === "top" || item.wall === "bottom";
+    const opening = horizontal
+      ? room.width * (item.widthCm / model.widthCm)
+      : room.height * (item.widthCm / model.heightCm);
+    const centerX = room.x + room.width * item.x;
+    const centerY = room.y + room.height * item.y;
+    let hingeX = centerX;
+    let hingeY = centerY;
+    let closedAngle = 0;
+    let openAngle = 0;
+    let anticlockwise = false;
+
+    if (item.wall === "top") {
+      hingeX = centerX + (item.flip ? opening / 2 : -opening / 2);
+      closedAngle = item.flip ? Math.PI : 0;
+      openAngle = Math.PI / 2;
+      anticlockwise = item.flip;
+    } else if (item.wall === "bottom") {
+      hingeX = centerX + (item.flip ? opening / 2 : -opening / 2);
+      closedAngle = item.flip ? Math.PI : 0;
+      openAngle = -Math.PI / 2;
+      anticlockwise = !item.flip;
+    } else if (item.wall === "left") {
+      hingeY = centerY + (item.flip ? opening / 2 : -opening / 2);
+      closedAngle = item.flip ? -Math.PI / 2 : Math.PI / 2;
+      openAngle = 0;
+      anticlockwise = !item.flip;
+    } else {
+      hingeY = centerY + (item.flip ? opening / 2 : -opening / 2);
+      closedAngle = item.flip ? -Math.PI / 2 : Math.PI / 2;
+      openAngle = Math.PI;
+      anticlockwise = item.flip;
+    }
+
+    const closedX = hingeX + Math.cos(closedAngle) * opening;
+    const closedY = hingeY + Math.sin(closedAngle) * opening;
+    const openX = hingeX + Math.cos(openAngle) * opening;
+    const openY = hingeY + Math.sin(openAngle) * opening;
+
+    context.save();
+    context.strokeStyle = "#ffffff";
+    context.lineWidth = interactive ? 7 : 11;
+    context.beginPath();
+    context.moveTo(hingeX, hingeY);
+    context.lineTo(closedX, closedY);
+    context.stroke();
+
+    context.strokeStyle = color;
+    context.lineWidth = interactive ? 2 : 3.5;
+    context.beginPath();
+    context.moveTo(hingeX, hingeY);
+    context.lineTo(openX, openY);
+    context.stroke();
+
+    context.setLineDash(interactive ? [5, 4] : [9, 7]);
+    context.beginPath();
+    context.arc(hingeX, hingeY, opening, closedAngle, openAngle, anticlockwise);
+    context.stroke();
+    context.setLineDash([]);
+
+    context.fillStyle = color;
+    context.beginPath();
+    context.arc(hingeX, hingeY, interactive ? 3 : 5, 0, Math.PI * 2);
+    context.fill();
+
+    if (selected && interactive) {
       const handle = getResizeHandle(room, item);
       context.fillStyle = "#ffffff";
       context.strokeStyle = "#17211f";
