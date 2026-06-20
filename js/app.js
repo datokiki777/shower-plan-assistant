@@ -31,7 +31,10 @@ const els = {
   reportForm: $("#reportForm"),
   historyList: $("#historyList"),
   alertBox: $("#alertBox"),
-  reportTitle: $("#reportTitle")
+  reportTitle: $("#reportTitle"),
+  sketchPreview: $("#sketchPreview"),
+  sketchPreviewEmpty: $("#sketchPreviewEmpty"),
+  removeSketchBtn: $("#removeSketchBtn")
 };
 
 function createEmptyReport() {
@@ -51,7 +54,8 @@ function createEmptyReport() {
     panelHeight: "",
     installables: [],
     extraWork: [],
-    workNotes: []
+    workNotes: [],
+    sketch: null
   };
 }
 
@@ -92,6 +96,7 @@ function syncFormFromReport() {
     input.value = Array.isArray(report[name]) ? arrayToText(report[name]) : report[name] || "";
   });
   updateTitle();
+  updateSketchPreview();
 }
 
 function syncReportFromForm() {
@@ -112,6 +117,7 @@ function normalizeReport(payload) {
   const report = { ...createEmptyReport(), ...(payload || {}) };
   report.id = payload.id || crypto.randomUUID();
   report.createdAt = payload.createdAt || new Date().toISOString();
+  report.sketch = payload.sketch && typeof payload.sketch === "object" ? payload.sketch : null;
   fields.forEach((name) => {
     const isArrayField = Array.isArray(createEmptyReport()[name]);
     if (isArrayField && !Array.isArray(report[name])) report[name] = textToArray(report[name]);
@@ -254,6 +260,7 @@ function buildStandaloneReportDocument() {
     .report-section:nth-of-type(3) { background: #dceeff; border-color: #9bbfe0; }
     .report-section:nth-of-type(4) { background: #ffe2d8; border-color: #df9e88; }
     .report-section:nth-of-type(5) { background: #ece3ff; border-color: #b7a1dd; }
+    .report-section:nth-of-type(6) { background: #edf5e8; border-color: #a9c693; }
     h1 { margin: 0 0 3px; font-size: 18px; }
     h2 {
       margin: 0 0 4px;
@@ -265,6 +272,14 @@ function buildStandaloneReportDocument() {
     h3 { margin: 6px 0 3px; font-size: 11px; }
     p { margin: 1px 0; font-size: 10.5px; }
     ul { margin: 3px 0 0 14px; padding: 0; font-size: 10.5px; }
+    .sketch-report-image {
+      display: block;
+      width: 100%;
+      max-height: 720px;
+      object-fit: contain;
+      border: 1px solid #aebdb9;
+      background: #fff;
+    }
     .print-actions {
       position: sticky;
       top: 0;
@@ -333,6 +348,12 @@ function buildPrintableReportContent() {
     p("პანელი სადამდე კეთდება", state.report.panelHeight),
     hasValue(state.report.installables) ? `<h3>დასაყენებლების სია</h3>${list(state.report.installables)}` : ""
   ].join("");
+  const sketchImage = window.BathroomSketch?.hasContent(state.report.sketch)
+    ? window.BathroomSketch.createImage(state.report.sketch)
+    : "";
+  const sketch = sketchImage
+    ? `<img class="sketch-report-image" src="${sketchImage}" alt="აბაზანის 2D ნახაზი" />`
+    : "";
 
   return `
       <h1>Shower Plan Assistant</h1>
@@ -342,7 +363,21 @@ function buildPrintableReportContent() {
       ${section("მასალები", materials)}
       ${section("დამატებითი სამუშაოები", list(state.report.extraWork))}
       ${section("შენიშვნები", list(state.report.workNotes))}
+      ${section("აბაზანის ნახაზი", sketch)}
     `;
+}
+
+function updateSketchPreview() {
+  if (!els.sketchPreview || !els.sketchPreviewEmpty || !els.removeSketchBtn) return;
+  const hasSketch = Boolean(window.BathroomSketch?.hasContent(state.report.sketch));
+  els.sketchPreview.hidden = !hasSketch;
+  els.sketchPreviewEmpty.hidden = hasSketch;
+  els.removeSketchBtn.hidden = !hasSketch;
+  if (hasSketch) {
+    els.sketchPreview.src = window.BathroomSketch.createImage(state.report.sketch);
+  } else {
+    els.sketchPreview.removeAttribute("src");
+  }
 }
 
 function escapeHtml(value) {
@@ -412,6 +447,11 @@ function bindEvents() {
   });
   els.saveBtn.addEventListener("click", () => saveCurrentReport(true));
   els.exportBtn.addEventListener("click", exportPdf);
+  els.removeSketchBtn?.addEventListener("click", () => {
+    state.report.sketch = null;
+    updateSketchPreview();
+    clearAlert();
+  });
   els.clearHistoryBtn?.addEventListener("click", async () => {
     await clearReports();
     await renderHistory();
@@ -420,6 +460,16 @@ function bindEvents() {
 }
 
 async function init() {
+  window.BathroomSketch?.init({
+    getData: () => state.report.sketch,
+    setData: (sketch) => {
+      state.report.sketch = sketch;
+    },
+    onSave: () => {
+      updateSketchPreview();
+      clearAlert();
+    }
+  });
   bindEvents();
   syncFormFromReport();
   await renderHistory();

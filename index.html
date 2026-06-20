@@ -9,6 +9,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" type="image/png" href="icons/favicon.png" />
   <link rel="stylesheet" href="css/styles.css" />
+  <script defer src="js/sketch-editor.js"></script>
   <script defer src="js/app.js"></script>
 </head>
 <body>
@@ -70,6 +71,19 @@
             <label>დამატებითი სამუშაოები <textarea name="extraWork" rows="4"></textarea></label>
             <label>სამუშაო შენიშვნები <textarea name="workNotes" rows="4"></textarea></label>
           </section>
+
+          <section class="form-card sketch-card wide">
+            <div class="sketch-card-head">
+              <div>
+                <h3>აბაზანის ნახაზი</h3>
+                <p>მარტივი 2D ზედა ხედი</p>
+              </div>
+              <button class="primary" type="button" id="openSketchBtn">ნახაზის გახსნა</button>
+            </div>
+            <div id="sketchPreviewEmpty" class="sketch-preview-empty">ნახაზი ჯერ არ არის შექმნილი</div>
+            <img id="sketchPreview" class="sketch-preview" alt="აბაზანის 2D ნახაზი" hidden />
+            <button type="button" id="removeSketchBtn" class="danger-action" hidden>ნახაზის წაშლა</button>
+          </section>
         </form>
 
         <section class="history manual-history">
@@ -82,5 +96,66 @@
       </section>
     </section>
   </main>
+
+  <dialog id="sketchDialog" class="sketch-dialog">
+    <form method="dialog" class="sketch-editor-shell">
+      <header class="sketch-editor-header">
+        <div>
+          <p class="eyebrow">2D ზედა ხედი</p>
+          <h2>აბაზანის ნახაზი</h2>
+        </div>
+        <button type="button" id="closeSketchBtn" class="icon-action" aria-label="დახურვა" title="დახურვა">×</button>
+      </header>
+
+      <div class="sketch-editor-body">
+        <aside class="sketch-tools">
+          <section class="sketch-tool-section">
+            <h3>ოთახის ზომა</h3>
+            <div class="two-col">
+              <label>სიგანე (სმ)<input id="roomWidthInput" type="number" min="100" max="1500" step="1" value="300" /></label>
+              <label>სიგრძე (სმ)<input id="roomHeightInput" type="number" min="100" max="1500" step="1" value="250" /></label>
+            </div>
+          </section>
+
+          <section class="sketch-tool-section">
+            <h3>ელემენტები</h3>
+            <div id="sketchPalette" class="sketch-palette">
+              <button type="button" data-sketch-type="door"><span style="--swatch:#e4a72e"></span>კარი</button>
+              <button type="button" data-sketch-type="window"><span style="--swatch:#3182ce"></span>ფანჯარა</button>
+              <button type="button" data-sketch-type="shower"><span style="--swatch:#22a6b3"></span>დუშთასე</button>
+              <button type="button" data-sketch-type="toilet"><span style="--swatch:#805ad5"></span>ტუალეტი</button>
+              <button type="button" data-sketch-type="sink"><span style="--swatch:#209486"></span>ხელსაბანი</button>
+              <button type="button" data-sketch-type="radiator"><span style="--swatch:#d65353"></span>რადიატორი</button>
+              <button type="button" data-sketch-type="glass"><span style="--swatch:#718096"></span>შუშა (ESG)</button>
+              <button type="button" data-sketch-type="outerNiche"><span style="--swatch:#dd6b20"></span>უჯრა გარეთ</button>
+              <button type="button" data-sketch-type="innerNiche"><span style="--swatch:#9c6b30"></span>უჯრა შიგნით</button>
+              <button type="button" data-sketch-type="floorFill"><span style="--swatch:#5a9d55"></span>იატაკის ამოვსება</button>
+            </div>
+          </section>
+
+          <section class="sketch-tool-section selected-tools">
+            <h3>არჩეული ელემენტი</h3>
+            <div class="sketch-selection-actions">
+              <button type="button" id="rotateSketchItemBtn">↻ 90°</button>
+              <button type="button" id="deleteSketchItemBtn" class="danger-action">წაშლა</button>
+            </div>
+          </section>
+        </aside>
+
+        <section class="sketch-stage-wrap">
+          <canvas id="sketchCanvas" aria-label="აბაზანის ნახაზის სამუშაო სივრცე"></canvas>
+          <p class="sketch-stage-hint">დაამატე ელემენტი და თითით ან მაუსით გადაათრიე სასურველ ადგილზე.</p>
+        </section>
+      </div>
+
+      <footer class="sketch-editor-footer">
+        <button type="button" id="clearSketchBtn" class="danger-action">ყველაფრის გასუფთავება</button>
+        <div>
+          <button type="button" id="cancelSketchBtn">გაუქმება</button>
+          <button type="button" id="saveSketchBtn" class="primary">ნახაზის შენახვა</button>
+        </div>
+      </footer>
+    </form>
+  </dialog>
 </body>
 </html>

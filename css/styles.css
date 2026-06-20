@@ -266,6 +266,204 @@ select:focus {
 
 .wide { grid-column: 1 / -1; }
 
+.sketch-card {
+  min-height: 180px;
+}
+
+.sketch-card-head,
+.sketch-editor-header,
+.sketch-editor-footer,
+.sketch-selection-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sketch-card-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sketch-preview-empty {
+  display: grid;
+  min-height: 110px;
+  margin-top: 12px;
+  place-items: center;
+  border: 1px dashed #aebfbb;
+  border-radius: 8px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.sketch-preview {
+  display: block;
+  width: min(560px, 100%);
+  max-height: 320px;
+  margin: 12px auto;
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.danger-action {
+  color: var(--danger);
+  border-color: #deb4b4;
+}
+
+.sketch-dialog {
+  width: min(1240px, calc(100% - 24px));
+  height: min(900px, calc(100% - 24px));
+  max-width: none;
+  max-height: none;
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #bac9c6;
+  border-radius: 8px;
+  background: #f6f8f7;
+  box-shadow: 0 24px 80px rgba(10, 31, 28, 0.3);
+}
+
+.sketch-dialog::backdrop {
+  background: rgba(10, 31, 28, 0.72);
+}
+
+.sketch-editor-shell {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100%;
+}
+
+.sketch-editor-header,
+.sketch-editor-footer {
+  padding: 12px 16px;
+  background: #fff;
+}
+
+.sketch-editor-header {
+  border-bottom: 1px solid var(--line);
+}
+
+.sketch-editor-header h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.sketch-editor-footer {
+  border-top: 1px solid var(--line);
+}
+
+.sketch-editor-footer > div {
+  display: flex;
+  gap: 10px;
+}
+
+.icon-action {
+  width: 44px;
+  min-width: 44px;
+  padding: 0;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.sketch-editor-body {
+  display: grid;
+  grid-template-columns: 330px minmax(0, 1fr);
+  width: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+
+.sketch-tools {
+  min-width: 0;
+  overflow-y: auto;
+  padding: 14px;
+  border-right: 1px solid var(--line);
+  background: #edf4f2;
+}
+
+.sketch-tool-section + .sketch-tool-section {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #cfdad7;
+}
+
+.sketch-tool-section h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+
+.sketch-palette {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.sketch-palette button {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.sketch-palette span {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  border: 2px solid rgba(0, 0, 0, 0.45);
+  border-radius: 3px;
+  background: var(--swatch);
+}
+
+.selected-tools button {
+  flex: 1 1 0;
+}
+
+.sketch-stage-wrap {
+  display: grid;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) auto;
+  padding: 14px;
+  background: #dfe7e5;
+}
+
+#sketchCanvas {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  min-height: 320px;
+  border: 1px solid #b8c5c2;
+  border-radius: 8px;
+  background: #fff;
+  touch-action: none;
+  cursor: grab;
+}
+
+#sketchCanvas.is-dragging {
+  cursor: grabbing;
+}
+
+.sketch-stage-hint {
+  margin: 8px 0 0;
+  color: #52615e;
+  font-size: 12px;
+  text-align: center;
+}
+
 .price-row {
   display: grid;
   grid-template-columns: 1fr 150px 42px;
@@ -327,6 +525,34 @@ select:focus {
     grid-template-columns: 1fr;
   }
 
+  .sketch-dialog {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .sketch-editor-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(360px, 1fr);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .sketch-tools {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .sketch-palette {
+    display: flex;
+    grid-template-columns: repeat(5, minmax(100px, 1fr));
+    overflow-x: auto;
+    padding-bottom: 5px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -345,6 +571,39 @@ select:focus {
   .two-col,
   .price-row {
     grid-template-columns: 1fr;
+  }
+
+  .sketch-card-head,
+  .sketch-editor-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sketch-card-head button,
+  .sketch-editor-footer > button,
+  .sketch-editor-footer > div,
+  .sketch-editor-footer > div button {
+    width: 100%;
+  }
+
+  .sketch-editor-body {
+    grid-template-rows: auto minmax(420px, 1fr);
+  }
+
+  .sketch-tools {
+    padding: 10px;
+  }
+
+  .sketch-palette {
+    grid-template-columns: none;
+  }
+
+  .sketch-palette button {
+    min-width: 112px;
+  }
+
+  #sketchCanvas {
+    min-height: 390px;
   }
 
   .price-row button {
@@ -432,6 +691,15 @@ select:focus {
     margin: 4px 0 0 16px;
     padding: 0;
     font-size: 11.5px;
+  }
+
+  .printable-report .sketch-report-image {
+    display: block;
+    width: 100%;
+    max-height: 190mm;
+    object-fit: contain;
+    border: 1px solid #aebdb9;
+    background: #fff;
   }
 
   .printable-report table {
