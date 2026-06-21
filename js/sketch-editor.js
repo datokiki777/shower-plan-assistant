@@ -7,12 +7,12 @@
     toilet: { label: "ტუალეტი", color: "#8b78b5", widthCm: 40, heightCm: 65 },
     sink: { label: "ხელსაბანი", color: "#4f968d", widthCm: 60, heightCm: 45 },
     radiator: { label: "რადიატორი", color: "#bd6b6b", widthCm: 80, heightCm: 15 },
-    glass: { label: "შუშა (ESG)", color: "#7d8b96", widthCm: 100, heightCm: 2 },
-    glassDoor: { label: "შუშის კარი", color: "#69a0aa", widthCm: 80, heightCm: 2 },
+    glass: { label: "შუშა (ESG)", color: "#d55454", widthCm: 100, heightCm: 2 },
+    glassDoor: { label: "შუშის კარი", color: "#e58b8b", widthCm: 80, heightCm: 2 },
     innerWall: { label: "შიდა კედელი", color: "#404846", widthCm: 120, heightCm: 8 },
     panelZone: { label: "პანელის ზონა", color: "#7596ad", widthCm: 120, heightCm: 180 },
-    outerNiche: { label: "უჯრა გარეთ", color: "#c48454", widthCm: 60, heightCm: 30 },
-    innerNiche: { label: "უჯრა შიგნით", color: "#9d7a51", widthCm: 60, heightCm: 30 },
+    outerNiche: { label: "გარე უჯრა", color: "#c48454", widthCm: 60, heightCm: 30 },
+    innerNiche: { label: "შიდა უჯრა", color: "#9d7a51", widthCm: 60, heightCm: 30 },
     floorFill: { label: "იატაკის ამოვსება", color: "#79a471", widthCm: 120, heightCm: 90 }
   };
 
@@ -819,17 +819,13 @@
     } else if (item.type === "shower") {
       context.fillRect(x, y, width, height);
       context.strokeRect(x, y, width, height);
-      context.strokeStyle = config.color;
-      context.lineWidth = interactive ? 1 : 2;
+      const vertical = isVerticalRotation(item);
+      const drainX = vertical ? x + width * 0.2 : x + width / 2;
+      const drainY = vertical ? y + height / 2 : y + height * 0.2;
+      context.fillStyle = "#111111";
       context.beginPath();
-      context.moveTo(x + 5, y + 5);
-      context.lineTo(x + width - 5, y + height - 5);
-      context.moveTo(x + width - 5, y + 5);
-      context.lineTo(x + 5, y + height - 5);
-      context.stroke();
-      context.beginPath();
-      context.arc(x + width / 2, y + height / 2, Math.max(3, Math.min(width, height) * 0.05), 0, Math.PI * 2);
-      context.stroke();
+      context.arc(drainX, drainY, Math.max(3, Math.min(width, height) * 0.045), 0, Math.PI * 2);
+      context.fill();
     } else if (item.type === "floorFill") {
       drawHatchedArea(context, x, y, width, height, config.color, interactive, 0.2);
     } else {
@@ -926,29 +922,19 @@
 
   function drawGlassDoor(context, room, item, selected, interactive) {
     const color = ITEM_TYPES.glassDoor.color;
-    const length = isVerticalRotation(item)
+    const vertical = isVerticalRotation(item);
+    const length = vertical
       ? room.height * (item.widthCm / model.heightCm)
       : room.width * (item.widthCm / model.widthCm);
     const centerX = room.x + room.width * item.x;
     const centerY = room.y + room.height * item.y;
-    let hingeX = centerX;
-    let hingeY = centerY;
-    let closedAngle;
-    let openAngle;
-    let anticlockwise;
-
-    if (isVerticalRotation(item)) {
-      hingeY = centerY + (item.flip ? length / 2 : -length / 2);
-      closedAngle = item.flip ? -Math.PI / 2 : Math.PI / 2;
-      openAngle = 0;
-      anticlockwise = !item.flip;
-    } else {
-      hingeX = centerX + (item.flip ? length / 2 : -length / 2);
-      closedAngle = item.flip ? Math.PI : 0;
-      openAngle = Math.PI / 2;
-      anticlockwise = item.flip;
-    }
-
+    const closedAngle = (item.rotation * Math.PI) / 180;
+    const directionX = Math.cos(closedAngle);
+    const directionY = Math.sin(closedAngle);
+    const hingeX = centerX - directionX * length / 2;
+    const hingeY = centerY - directionY * length / 2;
+    const openAngle = closedAngle + (item.flip ? -Math.PI / 2 : Math.PI / 2);
+    const anticlockwise = item.flip;
     const closedX = hingeX + Math.cos(closedAngle) * length;
     const closedY = hingeY + Math.sin(closedAngle) * length;
 
