@@ -13,7 +13,12 @@
     panelZone: { label: "პანელის ზონა", color: "#7596ad", widthCm: 120, heightCm: 180 },
     outerNiche: { label: "გარე უჯრა", color: "#c48454", widthCm: 60, heightCm: 30 },
     innerNiche: { label: "შიდა უჯრა", color: "#9d7a51", widthCm: 60, heightCm: 30 },
-    floorFill: { label: "იატაკის ამოვსება", color: "#79a471", widthCm: 120, heightCm: 90 }
+    floorFill: { label: "იატაკის ამოვსება", color: "#79a471", widthCm: 120, heightCm: 90 },
+    brauseset: { label: "Brauseset", color: "#3979b7", widthCm: 16, heightCm: 16, sizing: "fixed" },
+    regendusche: { label: "Regendusche", color: "#7867b8", widthCm: 20, heightCm: 20, sizing: "fixed" },
+    mischbatterie: { label: "Mischbatterie", color: "#d18434", widthCm: 28, heightCm: 16, sizing: "fixed" },
+    thermomischbatterie: { label: "Thermomischbatterie", color: "#b64f6c", widthCm: 30, heightCm: 17, sizing: "fixed" },
+    haltegriff: { label: "Haltegriff", color: "#397f5d", widthCm: 60, heightCm: 8, sizing: "length" }
   };
 
   const els = {};
@@ -82,6 +87,14 @@
 
   function isVerticalRotation(item) {
     return item.rotation === 90 || item.rotation === 270;
+  }
+
+  function getSizingMode(item) {
+    return ITEM_TYPES[item.type]?.sizing || "free";
+  }
+
+  function canResize(item) {
+    return getSizingMode(item) !== "fixed";
   }
 
   function normalizeDoorWall(wall, x = 0.5, y = 0.5) {
@@ -302,10 +315,14 @@
   function updateActiveSize() {
     const item = getSelected();
     if (item) {
+      const sizing = getSizingMode(item);
+      if (sizing === "fixed") return;
       const maxWidth = isVerticalRotation(item) ? model.heightCm : model.widthCm;
       const maxHeight = isVerticalRotation(item) ? model.widthCm : model.heightCm;
       item.widthCm = clampNumber(els.widthInput.value, 2, maxWidth, item.widthCm);
-      item.heightCm = clampNumber(els.heightInput.value, 2, maxHeight, item.heightCm);
+      if (sizing !== "length") {
+        item.heightCm = clampNumber(els.heightInput.value, 2, maxHeight, item.heightCm);
+      }
       if (item.type === "door") resnapDoor(item);
       else {
         keepItemInsideRoom(item);
@@ -424,14 +441,22 @@
           ? "შუშის კარი თავისუფლად მოძრაობს. შეგიძლია მოატრიალო და გაღების მხარე შეცვალო."
           : "ჩაწერე ზომა ან ნახაზზე კუთხის მრგვალი სახელური მოქაჩე.";
       const isLine = item.type === "glass" || item.type === "glassDoor" || item.type === "innerWall";
-      els.widthLabel.textContent = isLine ? "სიგრძე (სმ)" : item.type === "door" ? "კარის სიგანე (სმ)" : "სიგანე (სმ)";
-      els.heightLabel.textContent = isLine ? "ხაზის სისქე (სმ)" : item.type === "door" ? "კედლის სისქე (სმ)" : "სიგრძე (სმ)";
+      const sizing = getSizingMode(item);
+      els.widthLabel.textContent = isLine || sizing === "length" ? "სიგრძე (სმ)" : item.type === "door" ? "კარის სიგანე (სმ)" : "სიგანე (სმ)";
+      els.heightLabel.textContent = isLine || sizing === "length" ? "ხაზის სისქე (სმ)" : item.type === "door" ? "კედლის სისქე (სმ)" : "სიგრძე (სმ)";
       els.widthInput.min = "2";
       els.heightInput.min = "2";
       els.widthInput.max = String(isVerticalRotation(item) ? model.heightCm : model.widthCm);
       els.heightInput.max = String(isVerticalRotation(item) ? model.widthCm : model.heightCm);
       els.widthInput.value = Math.round(item.widthCm);
       els.heightInput.value = Math.round(item.heightCm);
+      els.widthInput.disabled = sizing === "fixed";
+      els.heightInput.disabled = sizing === "fixed" || sizing === "length";
+      if (sizing === "fixed") {
+        els.sizeHint.textContent = "ამ ელემენტის ზომა ფიქსირებულია. შესაძლებელია მხოლოდ გადაადგილება და მოტრიალება.";
+      } else if (sizing === "length") {
+        els.sizeHint.textContent = "შეგიძლია მხოლოდ სახელურის სიგრძე შეცვალო და მოატრიალო.";
+      }
       return;
     }
 
@@ -445,6 +470,8 @@
     els.heightInput.max = "1500";
     els.widthInput.value = Math.round(model.widthCm);
     els.heightInput.value = Math.round(model.heightCm);
+    els.widthInput.disabled = false;
+    els.heightInput.disabled = false;
   }
 
   function pointerDown(event) {
@@ -453,7 +480,7 @@
     const point = pointerPoint(event, view);
     const selected = getSelected();
 
-    if (selected && hitResizeHandle(event, view, selected)) {
+    if (selected && canResize(selected) && hitResizeHandle(event, view, selected)) {
       drag = { mode: "resize", id: selected.id };
       els.canvas.setPointerCapture(event.pointerId);
       els.canvas.classList.add("is-dragging");
@@ -490,6 +517,16 @@
         const pointerAlongWall = item.wall === "top" || item.wall === "bottom" ? point.x : point.y;
         item.widthCm = clampNumber(Math.abs(pointerAlongWall - (item.wall === "top" || item.wall === "bottom" ? item.x : item.y)) * 2 * roomLength, 20, roomLength, item.widthCm);
         resnapDoor(item);
+        syncSizeControls();
+        render();
+        return;
+      }
+      if (getSizingMode(item) === "length") {
+        const pointerDistance = isVerticalRotation(item)
+          ? Math.abs(point.y - item.y) * 2 * model.heightCm
+          : Math.abs(point.x - item.x) * 2 * model.widthCm;
+        item.widthCm = clampNumber(pointerDistance, 10, isVerticalRotation(item) ? model.heightCm : model.widthCm, item.widthCm);
+        keepItemInsideRoom(item);
         syncSizeControls();
         render();
         return;
@@ -765,6 +802,18 @@
       drawPanelZone(context, room, item, selected, interactive);
       return;
     }
+    if (item.type === "brauseset" || item.type === "regendusche") {
+      drawShowerFixture(context, room, item, selected, interactive);
+      return;
+    }
+    if (item.type === "mischbatterie" || item.type === "thermomischbatterie") {
+      drawMixerFixture(context, room, item, selected, interactive);
+      return;
+    }
+    if (item.type === "haltegriff") {
+      drawGrabBar(context, room, item, selected, interactive);
+      return;
+    }
 
     context.save();
     context.fillStyle = hexToRgba(config.color, item.type === "floorFill" ? 0.2 : 0.4);
@@ -839,15 +888,102 @@
       context.setLineDash([6, 4]);
       context.strokeRect(x - 4, y - 4, width + 8, height + 8);
       context.setLineDash([]);
-      const handle = getResizeHandle(room, item);
-      context.fillStyle = "#ffffff";
-      context.strokeStyle = "#17211f";
-      context.lineWidth = 2;
-      context.beginPath();
-      context.arc(handle.x, handle.y, 7, 0, Math.PI * 2);
-      context.fill();
-      context.stroke();
+      if (canResize(item)) drawResizeHandle(context, room, item);
     }
+    context.restore();
+  }
+
+  function drawShowerFixture(context, room, item, selected, interactive) {
+    const config = ITEM_TYPES[item.type];
+    const size = getItemSize(item);
+    const width = room.width * size.width;
+    const height = room.height * size.height;
+    const x = room.x + room.width * item.x - width / 2;
+    const y = room.y + room.height * item.y - height / 2;
+
+    context.save();
+    context.strokeStyle = config.color;
+    context.lineWidth = interactive ? 3 : 5;
+    context.lineCap = "round";
+    context.beginPath();
+    context.moveTo(x, y);
+    context.lineTo(x + width, y + height);
+    context.moveTo(x + width, y);
+    context.lineTo(x, y + height);
+    context.stroke();
+    drawSelection(context, room, item, x, y, width, height, selected, interactive);
+    context.restore();
+  }
+
+  function drawMixerFixture(context, room, item, selected, interactive) {
+    const config = ITEM_TYPES[item.type];
+    const size = getItemSize(item);
+    const width = room.width * size.width;
+    const height = room.height * size.height;
+    const x = room.x + room.width * item.x - width / 2;
+    const y = room.y + room.height * item.y - height / 2;
+
+    context.save();
+    context.fillStyle = hexToRgba(config.color, 0.12);
+    context.strokeStyle = config.color;
+    context.lineWidth = interactive ? 2 : 3.5;
+    context.beginPath();
+    context.ellipse(x + width / 2, y + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+    const crossSize = Math.min(width, height) * 0.3;
+    [x + width * 0.34, x + width * 0.66].forEach((centerX) => {
+      const centerY = y + height / 2;
+      context.beginPath();
+      context.moveTo(centerX - crossSize / 2, centerY - crossSize / 2);
+      context.lineTo(centerX + crossSize / 2, centerY + crossSize / 2);
+      context.moveTo(centerX + crossSize / 2, centerY - crossSize / 2);
+      context.lineTo(centerX - crossSize / 2, centerY + crossSize / 2);
+      context.stroke();
+    });
+    drawSelection(context, room, item, x, y, width, height, selected, interactive);
+    context.restore();
+  }
+
+  function drawGrabBar(context, room, item, selected, interactive) {
+    const config = ITEM_TYPES.haltegriff;
+    const size = getItemSize(item);
+    const width = room.width * size.width;
+    const height = room.height * size.height;
+    const x = room.x + room.width * item.x - width / 2;
+    const y = room.y + room.height * item.y - height / 2;
+    const vertical = isVerticalRotation(item);
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
+    const startX = vertical ? centerX : x;
+    const startY = vertical ? y : centerY;
+    const endX = vertical ? centerX : x + width;
+    const endY = vertical ? y + height : centerY;
+    const cap = interactive ? 7 : 11;
+
+    context.save();
+    context.strokeStyle = config.color;
+    context.lineWidth = interactive ? 4 : 7;
+    context.lineCap = "round";
+    context.beginPath();
+    context.moveTo(startX, startY);
+    context.lineTo(endX, endY);
+    context.stroke();
+    context.lineWidth = interactive ? 2 : 3.5;
+    context.beginPath();
+    if (vertical) {
+      context.moveTo(startX - cap, startY);
+      context.lineTo(startX + cap, startY);
+      context.moveTo(endX - cap, endY);
+      context.lineTo(endX + cap, endY);
+    } else {
+      context.moveTo(startX, startY - cap);
+      context.lineTo(startX, startY + cap);
+      context.moveTo(endX, endY - cap);
+      context.lineTo(endX, endY + cap);
+    }
+    context.stroke();
+    drawSelection(context, room, item, x, y, width, height, selected, interactive);
     context.restore();
   }
 
@@ -910,6 +1046,10 @@
     context.setLineDash([6, 4]);
     context.strokeRect(x - 4, y - 4, width + 8, height + 8);
     context.setLineDash([]);
+    if (canResize(item)) drawResizeHandle(context, room, item);
+  }
+
+  function drawResizeHandle(context, room, item) {
     const handle = getResizeHandle(room, item);
     context.fillStyle = "#ffffff";
     context.strokeStyle = "#17211f";
