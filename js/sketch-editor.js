@@ -9,6 +9,8 @@
     radiator: { label: "რადიატორი", color: "#bd6b6b", widthCm: 80, heightCm: 15 },
     glass: { label: "შუშა (ESG)", color: "#7d8b96", widthCm: 100, heightCm: 2 },
     glassDoor: { label: "შუშის კარი", color: "#69a0aa", widthCm: 80, heightCm: 2 },
+    innerWall: { label: "შიდა კედელი", color: "#404846", widthCm: 120, heightCm: 8 },
+    panelZone: { label: "პანელის ზონა", color: "#7596ad", widthCm: 120, heightCm: 180 },
     outerNiche: { label: "უჯრა გარეთ", color: "#c48454", widthCm: 60, heightCm: 30 },
     innerNiche: { label: "უჯრა შიგნით", color: "#9d7a51", widthCm: 60, heightCm: 30 },
     floorFill: { label: "იატაკის ამოვსება", color: "#79a471", widthCm: 120, heightCm: 90 }
@@ -263,6 +265,8 @@
       item.x = 0.5;
       item.y = 0;
       snapDoorToWall(item, "top");
+    } else {
+      keepItemInsideRoom(item);
     }
     model.items.push(item);
     updateSelection(item.id);
@@ -322,9 +326,9 @@
         : item.type === "glassDoor"
           ? "შუშის კარი თავისუფლად მოძრაობს. შეგიძლია მოატრიალო და გაღების მხარე შეცვალო."
           : "ჩაწერე ზომა ან ნახაზზე კუთხის მრგვალი სახელური მოქაჩე.";
-      const isGlassLine = item.type === "glass" || item.type === "glassDoor";
-      els.widthLabel.textContent = isGlassLine ? "სიგრძე (სმ)" : item.type === "door" ? "კარის სიგანე (სმ)" : "სიგანე (სმ)";
-      els.heightLabel.textContent = isGlassLine ? "ხაზის სისქე (სმ)" : item.type === "door" ? "კედლის სისქე (სმ)" : "სიგრძე (სმ)";
+      const isLine = item.type === "glass" || item.type === "glassDoor" || item.type === "innerWall";
+      els.widthLabel.textContent = isLine ? "სიგრძე (სმ)" : item.type === "door" ? "კარის სიგანე (სმ)" : "სიგანე (სმ)";
+      els.heightLabel.textContent = isLine ? "ხაზის სისქე (სმ)" : item.type === "door" ? "კედლის სისქე (სმ)" : "სიგრძე (სმ)";
       els.widthInput.min = "2";
       els.heightInput.min = "2";
       els.widthInput.max = String(item.rotation === 90 ? model.heightCm : model.widthCm);
@@ -652,17 +656,41 @@
       drawGlassDoor(context, room, item, selected, interactive);
       return;
     }
+    if (item.type === "innerWall") {
+      drawInnerWall(context, room, item, selected, interactive);
+      return;
+    }
+    if (item.type === "panelZone") {
+      drawPanelZone(context, room, item, selected, interactive);
+      return;
+    }
 
     context.save();
     context.fillStyle = hexToRgba(config.color, item.type === "floorFill" ? 0.2 : 0.4);
     context.strokeStyle = config.color;
     context.lineWidth = interactive ? 1.5 : 2.5;
 
-    if (item.type === "toilet" || item.type === "sink") {
+    if (item.type === "toilet") {
+      const radius = Math.min(width, height) * 0.28;
+      context.beginPath();
+      context.roundRect(x, y, width, height, radius);
+      context.fill();
+      context.stroke();
+      context.beginPath();
+      context.ellipse(x + width / 2, y + height * 0.62, width * 0.3, height * 0.25, 0, 0, Math.PI * 2);
+      context.stroke();
+    } else if (item.type === "sink") {
       context.beginPath();
       context.ellipse(x + width / 2, y + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2);
       context.fill();
       context.stroke();
+      context.beginPath();
+      context.ellipse(x + width / 2, y + height / 2, width * 0.32, height * 0.28, 0, 0, Math.PI * 2);
+      context.stroke();
+      context.beginPath();
+      context.arc(x + width / 2, y + height * 0.25, Math.max(2, width * 0.035), 0, Math.PI * 2);
+      context.fillStyle = config.color;
+      context.fill();
     } else if (item.type === "glass") {
       context.beginPath();
       context.lineWidth = interactive ? 3 : 5;
@@ -674,17 +702,34 @@
         context.lineTo(x + width, y + height / 2);
       }
       context.stroke();
-    } else if (item.type === "floorFill") {
+    } else if (item.type === "radiator") {
+      context.fillRect(x, y, width, height);
+      context.strokeRect(x, y, width, height);
+      context.strokeStyle = config.color;
+      const bars = Math.max(3, Math.round(width / 12));
+      for (let index = 1; index < bars; index += 1) {
+        const barX = x + (width * index) / bars;
+        context.beginPath();
+        context.moveTo(barX, y + 2);
+        context.lineTo(barX, y + height - 2);
+        context.stroke();
+      }
+    } else if (item.type === "shower") {
       context.fillRect(x, y, width, height);
       context.strokeRect(x, y, width, height);
       context.strokeStyle = config.color;
       context.lineWidth = interactive ? 1 : 2;
-      for (let offset = -height; offset < width; offset += Math.max(10, width / 8)) {
-        context.beginPath();
-        context.moveTo(x + Math.max(0, offset), y + Math.max(0, -offset));
-        context.lineTo(x + Math.min(width, offset + height), y + Math.min(height, height + offset));
-        context.stroke();
-      }
+      context.beginPath();
+      context.moveTo(x + 5, y + 5);
+      context.lineTo(x + width - 5, y + height - 5);
+      context.moveTo(x + width - 5, y + 5);
+      context.lineTo(x + 5, y + height - 5);
+      context.stroke();
+      context.beginPath();
+      context.arc(x + width / 2, y + height / 2, Math.max(3, Math.min(width, height) * 0.05), 0, Math.PI * 2);
+      context.stroke();
+    } else if (item.type === "floorFill") {
+      drawHatchedArea(context, x, y, width, height, config.color, interactive, 0.2);
     } else {
       context.fillRect(x, y, width, height);
       context.strokeRect(x, y, width, height);
@@ -706,6 +751,75 @@
       context.stroke();
     }
     context.restore();
+  }
+
+  function drawInnerWall(context, room, item, selected, interactive) {
+    const color = ITEM_TYPES.innerWall.color;
+    const size = getItemSize(item);
+    const width = room.width * size.width;
+    const height = room.height * size.height;
+    const x = room.x + room.width * item.x - width / 2;
+    const y = room.y + room.height * item.y - height / 2;
+
+    context.save();
+    context.fillStyle = hexToRgba(color, 0.72);
+    context.strokeStyle = color;
+    context.lineWidth = interactive ? 1.5 : 2.5;
+    context.fillRect(x, y, width, height);
+    context.strokeRect(x, y, width, height);
+    drawSelection(context, room, item, x, y, width, height, selected, interactive);
+    context.restore();
+  }
+
+  function drawPanelZone(context, room, item, selected, interactive) {
+    const color = ITEM_TYPES.panelZone.color;
+    const size = getItemSize(item);
+    const width = room.width * size.width;
+    const height = room.height * size.height;
+    const x = room.x + room.width * item.x - width / 2;
+    const y = room.y + room.height * item.y - height / 2;
+
+    context.save();
+    drawHatchedArea(context, x, y, width, height, color, interactive, 0.16);
+    drawSelection(context, room, item, x, y, width, height, selected, interactive);
+    context.restore();
+  }
+
+  function drawHatchedArea(context, x, y, width, height, color, interactive, alpha) {
+    context.fillStyle = hexToRgba(color, alpha);
+    context.strokeStyle = color;
+    context.lineWidth = interactive ? 1.2 : 2;
+    context.fillRect(x, y, width, height);
+    context.strokeRect(x, y, width, height);
+    context.save();
+    context.beginPath();
+    context.rect(x, y, width, height);
+    context.clip();
+    const spacing = Math.max(interactive ? 12 : 20, width / 9);
+    for (let offset = -height; offset < width + height; offset += spacing) {
+      context.beginPath();
+      context.moveTo(x + offset, y + height);
+      context.lineTo(x + offset + height, y);
+      context.stroke();
+    }
+    context.restore();
+  }
+
+  function drawSelection(context, room, item, x, y, width, height, selected, interactive) {
+    if (!selected || !interactive) return;
+    context.strokeStyle = "#17211f";
+    context.lineWidth = 1.5;
+    context.setLineDash([6, 4]);
+    context.strokeRect(x - 4, y - 4, width + 8, height + 8);
+    context.setLineDash([]);
+    const handle = getResizeHandle(room, item);
+    context.fillStyle = "#ffffff";
+    context.strokeStyle = "#17211f";
+    context.lineWidth = 2;
+    context.beginPath();
+    context.arc(handle.x, handle.y, 7, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
   }
 
   function drawGlassDoor(context, room, item, selected, interactive) {
@@ -873,7 +987,7 @@
       context.fillStyle = hexToRgba(entry.color, 0.5);
       context.strokeStyle = entry.color;
       context.lineWidth = interactive ? 1 : 2;
-      if (entry.type === "glass" || entry.type === "glassDoor") {
+      if (entry.type === "glass" || entry.type === "glassDoor" || entry.type === "innerWall") {
         context.beginPath();
         context.moveTo(x, y + swatch / 2);
         context.lineTo(x + swatch, y + swatch / 2);
