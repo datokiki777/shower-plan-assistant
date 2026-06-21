@@ -53,13 +53,18 @@
               type: item.type,
               x: clampNumber(item.x, 0, 1, 0.5),
               y: clampNumber(item.y, 0, 1, 0.5),
-              rotation: Number(item.rotation) === 90 ? 90 : 0,
+              rotation: normalizeRotation(item.rotation),
               widthCm: clampNumber(item.widthCm, 2, 1500, ITEM_TYPES[item.type].widthCm),
               heightCm: clampNumber(item.heightCm, 2, 1500, ITEM_TYPES[item.type].heightCm),
               wall: item.type === "door" ? normalizeDoorWall(item.wall, item.x, item.y) : null,
+              wallTargetId: item.type === "door" ? item.wallTargetId || null : null,
               flip: item.type === "door" || item.type === "glassDoor" ? Boolean(item.flip) : false
             }))
-            .map((item) => (item.type === "door" ? snapDoorToWall(item, item.wall, widthCm, heightCm) : item))
+            .map((item) => (
+              item.type === "door" && !item.wallTargetId
+                ? snapDoorToWall(item, item.wall, widthCm, heightCm)
+                : item
+            ))
         : []
     };
   }
@@ -68,6 +73,15 @@
     const number = Number(value);
     if (!Number.isFinite(number)) return fallback;
     return Math.min(max, Math.max(min, number));
+  }
+
+  function normalizeRotation(value) {
+    const rotation = Math.round(Number(value) / 90) * 90;
+    return ((rotation % 360) + 360) % 360;
+  }
+
+  function isVerticalRotation(item) {
+    return item.rotation === 90 || item.rotation === 270;
   }
 
   function normalizeDoorWall(wall, x = 0.5, y = 0.5) {
@@ -89,6 +103,7 @@
     roomHeightCm = model.heightCm
   ) {
     item.wall = wall;
+    item.wallTargetId = null;
     item.rotation = wall === "left" || wall === "right" ? 90 : 0;
     const half = getDoorHalfSpan(item, wall, roomWidthCm, roomHeightCm);
     if (wall === "top" || wall === "bottom") {
@@ -102,7 +117,76 @@
   }
 
   function snapDoorToNearestWall(item) {
-    return snapDoorToWall(item, normalizeDoorWall(null, item.x, item.y));
+    const candidates = [
+      { distance: item.y * model.heightCm, kind: "outer", wall: "top" },
+      { distance: (1 - item.x) * model.widthCm, kind: "outer", wall: "right" },
+      { distance: (1 - item.y) * model.heightCm, kind: "outer", wall: "bottom" },
+      { distance: item.x * model.widthCm, kind: "outer", wall: "left" }
+    ];
+
+    model.items
+      .filter((entry) => entry.type === "innerWall" && entry.id !== item.id)
+      .forEach((wallItem) => {
+        const size = getItemSize(wallItem);
+        const vertical = isVerticalRotation(wallItem);
+        const minX = wallItem.x - size.width / 2;
+        const maxX = wallItem.x + size.width / 2;
+        const minY = wallItem.y - size.height / 2;
+        const maxY = wallItem.y + size.height / 2;
+        const closestX = Math.min(maxX, Math.max(minX, item.x));
+        const closestY = Math.min(maxY, Math.max(minY, item.y));
+        const dx = (item.x - closestX) * model.widthCm;
+        const dy = (item.y - closestY) * model.heightCm;
+        candidates.push({
+          distance: Math.hypot(dx, dy),
+          kind: "inner",
+          wallItem,
+          wall: vertical
+            ? (item.x <= wallItem.x ? "right" : "left")
+            : (item.y <= wallItem.y ? "bottom" : "top")
+        });
+      });
+
+    candidates.sort((a, b) => a.distance - b.distance);
+    const nearest = candidates[0];
+    return nearest.kind === "inner"
+      ? snapDoorToInnerWall(item, nearest.wallItem, nearest.wall)
+      : snapDoorToWall(item, nearest.wall);
+  }
+
+  function snapDoorToInnerWall(item, wallItem, wall) {
+    const wallSize = getItemSize(wallItem);
+    const vertical = isVerticalRotation(wallItem);
+    item.wall = wall;
+    item.wallTargetId = wallItem.id;
+    item.rotation = vertical ? 90 : 0;
+    if (vertical) {
+      const half = item.widthCm / model.heightCm / 2;
+      const min = wallItem.y - wallSize.height / 2 + half;
+      const max = wallItem.y + wallSize.height / 2 - half;
+      item.x = wallItem.x;
+      item.y = min <= max ? Math.min(max, Math.max(min, item.y)) : wallItem.y;
+    } else {
+      const half = item.widthCm / model.widthCm / 2;
+      const min = wallItem.x - wallSize.width / 2 + half;
+      const max = wallItem.x + wallSize.width / 2 - half;
+      item.x = min <= max ? Math.min(max, Math.max(min, item.x)) : wallItem.x;
+      item.y = wallItem.y;
+    }
+    return item;
+  }
+
+  function resnapDoor(item) {
+    if (!item.wallTargetId) return snapDoorToWall(item, item.wall);
+    const wallItem = model.items.find((entry) => entry.id === item.wallTargetId && entry.type === "innerWall");
+    return wallItem ? snapDoorToInnerWall(item, wallItem, item.wall) : snapDoorToNearestWall(item);
+  }
+
+  function syncDoorsOnInnerWall(wallItem) {
+    if (wallItem.type !== "innerWall") return;
+    model.items
+      .filter((entry) => entry.type === "door" && entry.wallTargetId === wallItem.id)
+      .forEach((door) => snapDoorToInnerWall(door, wallItem, door.wall));
   }
 
   function getDoorHalfSpan(item, wall = item.wall, roomWidthCm = model.widthCm, roomHeightCm = model.heightCm) {
@@ -218,12 +302,15 @@
   function updateActiveSize() {
     const item = getSelected();
     if (item) {
-      const maxWidth = item.rotation === 90 ? model.heightCm : model.widthCm;
-      const maxHeight = item.rotation === 90 ? model.widthCm : model.heightCm;
+      const maxWidth = isVerticalRotation(item) ? model.heightCm : model.widthCm;
+      const maxHeight = isVerticalRotation(item) ? model.widthCm : model.heightCm;
       item.widthCm = clampNumber(els.widthInput.value, 2, maxWidth, item.widthCm);
       item.heightCm = clampNumber(els.heightInput.value, 2, maxHeight, item.heightCm);
-      if (item.type === "door") snapDoorToWall(item, item.wall);
-      else keepItemInsideRoom(item);
+      if (item.type === "door") resnapDoor(item);
+      else {
+        keepItemInsideRoom(item);
+        syncDoorsOnInnerWall(item);
+      }
     } else {
       model.widthCm = clampNumber(els.widthInput.value, 100, 1500, DEFAULT_ROOM.widthCm);
       model.heightCm = clampNumber(els.heightInput.value, 100, 1500, DEFAULT_ROOM.heightCm);
@@ -277,8 +364,9 @@
     const item = getSelected();
     if (!item) return;
     if (item.type === "door") return;
-    item.rotation = item.rotation === 90 ? 0 : 90;
+    item.rotation = (item.rotation + 90) % 360;
     keepItemInsideRoom(item);
+    syncDoorsOnInnerWall(item);
     syncSizeControls();
     render();
   }
@@ -292,7 +380,16 @@
 
   function deleteSelected() {
     if (!selectedId) return;
+    const removed = getSelected();
     model.items = model.items.filter((item) => item.id !== selectedId);
+    if (removed?.type === "innerWall") {
+      model.items
+        .filter((item) => item.type === "door" && item.wallTargetId === removed.id)
+        .forEach((door) => {
+          door.wallTargetId = null;
+          snapDoorToNearestWall(door);
+        });
+    }
     updateSelection(null);
     render();
   }
@@ -331,8 +428,8 @@
       els.heightLabel.textContent = isLine ? "ხაზის სისქე (სმ)" : item.type === "door" ? "კედლის სისქე (სმ)" : "სიგრძე (სმ)";
       els.widthInput.min = "2";
       els.heightInput.min = "2";
-      els.widthInput.max = String(item.rotation === 90 ? model.heightCm : model.widthCm);
-      els.heightInput.max = String(item.rotation === 90 ? model.widthCm : model.heightCm);
+      els.widthInput.max = String(isVerticalRotation(item) ? model.heightCm : model.widthCm);
+      els.heightInput.max = String(isVerticalRotation(item) ? model.widthCm : model.heightCm);
       els.widthInput.value = Math.round(item.widthCm);
       els.heightInput.value = Math.round(item.heightCm);
       return;
@@ -392,14 +489,14 @@
         const roomLength = item.wall === "top" || item.wall === "bottom" ? model.widthCm : model.heightCm;
         const pointerAlongWall = item.wall === "top" || item.wall === "bottom" ? point.x : point.y;
         item.widthCm = clampNumber(Math.abs(pointerAlongWall - (item.wall === "top" || item.wall === "bottom" ? item.x : item.y)) * 2 * roomLength, 20, roomLength, item.widthCm);
-        snapDoorToWall(item, item.wall);
+        resnapDoor(item);
         syncSizeControls();
         render();
         return;
       }
       const visualWidthCm = clampNumber(Math.abs(point.x - item.x) * 2 * model.widthCm, 2, model.widthCm, item.widthCm);
       const visualHeightCm = clampNumber(Math.abs(point.y - item.y) * 2 * model.heightCm, 2, model.heightCm, item.heightCm);
-      if (item.rotation === 90) {
+      if (isVerticalRotation(item)) {
         item.widthCm = visualHeightCm;
         item.heightCm = visualWidthCm;
       } else {
@@ -407,12 +504,16 @@
         item.heightCm = visualHeightCm;
       }
       keepItemInsideRoom(item);
+      syncDoorsOnInnerWall(item);
       syncSizeControls();
     } else {
       item.x = point.x - drag.dx;
       item.y = point.y - drag.dy;
       if (item.type === "door") snapDoorToNearestWall(item);
-      else keepItemInsideRoom(item);
+      else {
+        keepItemInsideRoom(item);
+        syncDoorsOnInnerWall(item);
+      }
     }
     render();
   }
@@ -467,7 +568,7 @@
     }
     const width = Math.min(1, item.widthCm / model.widthCm);
     const height = Math.min(1, item.heightCm / model.heightCm);
-    return item.rotation === 90
+    return isVerticalRotation(item)
       ? { width: height, height: width }
       : { width, height };
   }
@@ -477,8 +578,8 @@
       snapDoorToWall(item, item.wall);
       return;
     }
-    const maxWidth = item.rotation === 90 ? model.heightCm : model.widthCm;
-    const maxHeight = item.rotation === 90 ? model.widthCm : model.heightCm;
+    const maxWidth = isVerticalRotation(item) ? model.heightCm : model.widthCm;
+    const maxHeight = isVerticalRotation(item) ? model.widthCm : model.heightCm;
     item.widthCm = Math.min(item.widthCm, maxWidth);
     item.heightCm = Math.min(item.heightCm, maxHeight);
     const size = getItemSize(item);
@@ -694,7 +795,7 @@
     } else if (item.type === "glass") {
       context.beginPath();
       context.lineWidth = interactive ? 3 : 5;
-      if (item.rotation === 90) {
+      if (isVerticalRotation(item)) {
         context.moveTo(x + width / 2, y);
         context.lineTo(x + width / 2, y + height);
       } else {
@@ -702,6 +803,7 @@
         context.lineTo(x + width, y + height / 2);
       }
       context.stroke();
+      drawGlassLabel(context, x, y, width, height, item, interactive);
     } else if (item.type === "radiator") {
       context.fillRect(x, y, width, height);
       context.strokeRect(x, y, width, height);
@@ -824,7 +926,7 @@
 
   function drawGlassDoor(context, room, item, selected, interactive) {
     const color = ITEM_TYPES.glassDoor.color;
-    const length = item.rotation === 90
+    const length = isVerticalRotation(item)
       ? room.height * (item.widthCm / model.heightCm)
       : room.width * (item.widthCm / model.widthCm);
     const centerX = room.x + room.width * item.x;
@@ -835,7 +937,7 @@
     let openAngle;
     let anticlockwise;
 
-    if (item.rotation === 90) {
+    if (isVerticalRotation(item)) {
       hingeY = centerY + (item.flip ? length / 2 : -length / 2);
       closedAngle = item.flip ? -Math.PI / 2 : Math.PI / 2;
       openAngle = 0;
@@ -879,6 +981,25 @@
       context.fill();
       context.stroke();
     }
+    context.restore();
+  }
+
+  function drawGlassLabel(context, x, y, width, height, item, interactive) {
+    const label = "შუშა";
+    const fontSize = interactive ? 11 : 19;
+    context.save();
+    context.font = `800 ${fontSize}px "Segoe UI", Arial, sans-serif`;
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    const textWidth = context.measureText(label).width;
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
+    const labelX = isVerticalRotation(item) ? centerX + textWidth / 2 + 10 : centerX;
+    const labelY = isVerticalRotation(item) ? centerY : centerY - fontSize;
+    context.fillStyle = "rgba(255, 255, 255, 0.88)";
+    context.fillRect(labelX - textWidth / 2 - 4, labelY - fontSize / 2 - 2, textWidth + 8, fontSize + 4);
+    context.fillStyle = "#44515b";
+    context.fillText(label, labelX, labelY);
     context.restore();
   }
 
