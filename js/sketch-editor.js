@@ -1244,8 +1244,12 @@
         context.strokeRect(x, y, swatch, swatch);
       }
 
-      context.fillStyle = "#263835";
-      context.fillText(entry.label, x + swatch + 8, y + swatch / 2);
+      if (entry.type === "glass" || entry.type === "glassDoor") {
+        drawMixedScriptText(context, entry.label, x + swatch + 8, y + swatch / 2, "#263835", ITEM_TYPES.glass.color);
+      } else {
+        context.fillStyle = "#263835";
+        context.fillText(entry.label, x + swatch + 8, y + swatch / 2);
+      }
       x += itemWidth;
     });
     context.restore();
@@ -1270,10 +1274,20 @@
     context.font = `500 ${fontSize}px "Segoe UI", Arial, sans-serif`;
 
     wrapTextLines(context, note, maxWidth).forEach((line) => {
-      context.fillText(line, view.room.x, y);
+      drawMixedScriptText(context, line, view.room.x, y, "#263835", ITEM_TYPES.glass.color);
       y += lineHeight;
     });
     context.restore();
+  }
+
+  function drawMixedScriptText(context, text, x, y, defaultColor, latinColor) {
+    const parts = String(text).split(/([A-Za-z][A-Za-z0-9.,:/+()#-]*)/g).filter(Boolean);
+    let cursor = x;
+    parts.forEach((part) => {
+      context.fillStyle = /[A-Za-z]/.test(part) ? latinColor : defaultColor;
+      context.fillText(part, cursor, y);
+      cursor += context.measureText(part).width;
+    });
   }
 
   function wrapTextLines(context, text, maxWidth) {
