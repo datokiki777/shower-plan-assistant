@@ -1,5 +1,7 @@
 const DB_NAME = "shower-plan-assistant";
+const DB_VERSION = 2;
 const STORE = "reports";
+const LOADING_STORE = "loadingLists";
 
 const fields = [
   "clientName",
@@ -34,8 +36,21 @@ const els = {
   reportTitle: $("#reportTitle"),
   sketchPreview: $("#sketchPreview"),
   sketchPreviewEmpty: $("#sketchPreviewEmpty"),
-  removeSketchBtn: $("#removeSketchBtn")
+  removeSketchBtn: $("#removeSketchBtn"),
+  modeReportBtn: $("#modeReportBtn"),
+  modeLoadingBtn: $("#modeLoadingBtn"),
+  reportView: $("#reportView"),
+  loadingView: $("#loadingView")
 };
+
+function setMode(mode) {
+  const isLoading = mode === "loading";
+  els.reportView.hidden = isLoading;
+  els.loadingView.hidden = !isLoading;
+  els.modeReportBtn.classList.toggle("is-active", !isLoading);
+  els.modeLoadingBtn.classList.toggle("is-active", isLoading);
+  if (isLoading) window.LoadingMode?.onShow();
+}
 
 function createEmptyReport() {
   return {
@@ -129,42 +144,62 @@ function normalizeReport(payload) {
 
 function openDb() {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE, { keyPath: "id" });
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: "id" });
+      if (!db.objectStoreNames.contains(LOADING_STORE)) db.createObjectStore(LOADING_STORE, { keyPath: "id" });
+    };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
 }
 
-async function putReport(report) {
+async function putRecord(storeName, record) {
   const db = await openDb();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).put(report);
+    const tx = db.transaction(storeName, "readwrite");
+    tx.objectStore(storeName).put(record);
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
   });
 }
 
-async function getReports() {
+async function getRecords(storeName) {
   const db = await openDb();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readonly");
-    const req = tx.objectStore(STORE).getAll();
+    const tx = db.transaction(storeName, "readonly");
+    const req = tx.objectStore(storeName).getAll();
     req.onsuccess = () => resolve(req.result.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))));
     req.onerror = () => reject(req.error);
   });
 }
 
-async function clearReports() {
+async function clearRecords(storeName) {
   const db = await openDb();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).clear();
+    const tx = db.transaction(storeName, "readwrite");
+    tx.objectStore(storeName).clear();
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
   });
 }
+
+async function deleteRecord(storeName, id) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    tx.objectStore(storeName).delete(id);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+const putReport = (report) => putRecord(STORE, report);
+const getReports = () => getRecords(STORE);
+const clearReports = () => clearRecords(STORE);
+
+window.AppDB = { putRecord, getRecords, clearRecords, deleteRecord, LOADING_STORE };
 
 async function saveCurrentReport(showMessage = true) {
   syncReportFromForm();
@@ -457,6 +492,8 @@ function bindEvents() {
     await renderHistory();
     showAlert("ისტორია წაიშალა.", "info");
   });
+  els.modeReportBtn?.addEventListener("click", () => setMode("report"));
+  els.modeLoadingBtn?.addEventListener("click", () => setMode("loading"));
 }
 
 async function init() {
@@ -473,6 +510,7 @@ async function init() {
   bindEvents();
   syncFormFromReport();
   await renderHistory();
+  window.LoadingMode?.init();
   registerServiceWorker();
 }
 
