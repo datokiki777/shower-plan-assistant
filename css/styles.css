@@ -569,6 +569,7 @@ select:focus {
 .loading-item-row {
   display: grid;
   grid-template-columns: 22px 22px 1fr 34px;
+  grid-template-areas: "num check note remove";
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
@@ -576,23 +577,37 @@ select:focus {
 
 .loading-item-row-qty {
   grid-template-columns: 22px 1fr 90px 34px;
+  grid-template-areas: "check name qty remove";
 }
 
 .loading-item-num {
+  grid-area: num;
   text-align: center;
   font-weight: 800;
   color: var(--brand);
 }
 
 .loading-check {
+  grid-area: check;
   width: 20px;
   height: 20px;
   margin: 0;
   padding: 0;
 }
 
+.loading-note {
+  grid-area: note;
+}
+
+.loading-name {
+  grid-area: name;
+}
+
+.loading-qty {
+  grid-area: qty;
+}
+
 .loading-note,
-.loading-door,
 .loading-name,
 .loading-qty {
   margin: 0;
@@ -601,6 +616,7 @@ select:focus {
 }
 
 .loading-remove-btn {
+  grid-area: remove;
   width: 34px;
   min-height: 34px;
   padding: 0;
@@ -719,19 +735,24 @@ select:focus {
     flex: 1 1 0;
   }
 
-  .loading-item-row,
-  .loading-item-row-qty {
-    grid-template-columns: 22px 1fr;
-    grid-auto-flow: row;
+  .loading-item-row {
+    grid-template-columns: 22px 22px 1fr;
+    grid-template-areas:
+      "num check remove"
+      "note note note";
+    row-gap: 6px;
   }
 
-  .loading-item-num {
-    grid-row: 1;
+  .loading-item-row-qty {
+    grid-template-columns: 22px 1fr 34px;
+    grid-template-areas:
+      "check name remove"
+      "qty qty qty";
+    row-gap: 6px;
   }
 
   .loading-remove-btn {
-    width: 100%;
-    grid-column: 1 / -1;
+    justify-self: end;
   }
 
   .sketch-card-head,
