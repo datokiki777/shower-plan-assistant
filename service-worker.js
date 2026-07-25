@@ -1,4 +1,4 @@
-const CACHE = "shower-plan-assistant-v30";
+const CACHE = "shower-plan-assistant-v31";
 const ASSETS = [
   "./",
   "./index.html",
@@ -35,7 +35,7 @@ self.addEventListener("message", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: "no-store" })
       .then((response) => {
         const copy = response.clone();
         caches.open(CACHE).then((cache) => cache.put(event.request, copy));
