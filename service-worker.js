@@ -1,4 +1,4 @@
-const CACHE = "shower-plan-assistant-v28";
+const CACHE = "shower-plan-assistant-v29";
 const ASSETS = [
   "./",
   "./index.html",
@@ -15,7 +15,6 @@ const ASSETS = [
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
