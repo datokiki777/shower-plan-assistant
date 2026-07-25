@@ -58,7 +58,7 @@
   }
 
   function renderSimpleList(listName) {
-    const container = els[`${listName}Items`];
+    const container = els.containers[listName];
     const items = state.loading[listName];
     container.innerHTML = "";
     items.forEach((item, index) => {
@@ -91,7 +91,7 @@
   }
 
   function renderQtyList(listName) {
-    const container = els[`${listName}Items`];
+    const container = els.containers[listName];
     const items = state.loading[listName];
     container.innerHTML = "";
     items.forEach((item, index) => {
@@ -324,11 +324,13 @@
   function cacheEls() {
     els.titleInput = $("#loadingTitleInput");
     els.titleLabel = $("#loadingTitleLabel");
-    els.trayItems = $("#trayItems");
-    els.glassItems = $("#glassItems");
-    els.doorItems = $("#doorItems");
-    els.panelItems = $("#panelItems");
-    els.extraItems = $("#extraItems");
+    els.containers = {
+      trays: $("#trayItems"),
+      glass: $("#glassItems"),
+      doors: $("#doorItems"),
+      panels: $("#panelItems"),
+      extras: $("#extraItems")
+    };
     els.clearBtn = $("#loadingClearBtn");
     els.saveBtn = $("#loadingSaveBtn");
     els.exportBtn = $("#loadingExportBtn");
