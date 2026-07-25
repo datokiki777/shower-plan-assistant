@@ -1,6 +1,9 @@
 (function () {
   const $ = (selector) => document.querySelector(selector);
 
+  const SIMPLE_LISTS = ["trays", "glass", "doors"];
+  const QTY_LISTS = ["panels", "extras"];
+
   const els = {};
   let state = { loading: createEmptyLoading() };
   let initialized = false;
@@ -12,25 +15,17 @@
       title: "",
       trays: [],
       glass: [],
+      doors: [],
       panels: [],
-      customLists: []
+      extras: []
     };
   }
 
-  function newTray() {
+  function newSimpleItem() {
     return { id: crypto.randomUUID(), note: "", checked: false };
   }
-  function newGlass() {
-    return { id: crypto.randomUUID(), note: "", door: "", checked: false };
-  }
-  function newPanel() {
+  function newQtyItem() {
     return { id: crypto.randomUUID(), name: "", qty: "", checked: false };
-  }
-  function newCustomItem() {
-    return { id: crypto.randomUUID(), name: "", qty: "", checked: false };
-  }
-  function newCustomList(title) {
-    return { id: crypto.randomUUID(), title: title || "ახალი სია", items: [] };
   }
 
   function showAlert(message, tone = "info") {
@@ -58,16 +53,15 @@
   function renderAll() {
     els.titleInput.value = state.loading.title || "";
     els.titleLabel.textContent = state.loading.title || "ახალი დატვირთვა";
-    renderTrays();
-    renderGlass();
-    renderPanels();
-    renderCustomLists();
+    SIMPLE_LISTS.forEach(renderSimpleList);
+    QTY_LISTS.forEach(renderQtyList);
   }
 
-  function renderTrays() {
-    const container = els.trayItems;
+  function renderSimpleList(listName) {
+    const container = els[`${listName}Items`];
+    const items = state.loading[listName];
     container.innerHTML = "";
-    state.loading.trays.forEach((item, index) => {
+    items.forEach((item, index) => {
       const row = document.createElement("div");
       row.className = "loading-item-row";
       row.innerHTML = `
@@ -85,58 +79,22 @@
         clearAlert();
       });
       row.querySelector(".loading-remove-btn").addEventListener("click", () => {
-        state.loading.trays.splice(index, 1);
-        renderTrays();
+        items.splice(index, 1);
+        renderSimpleList(listName);
         clearAlert();
       });
       container.appendChild(row);
     });
-    if (!state.loading.trays.length) {
+    if (!items.length) {
       container.innerHTML = '<p class="loading-empty">სია ცარიელია</p>';
     }
   }
 
-  function renderGlass() {
-    const container = els.glassItems;
+  function renderQtyList(listName) {
+    const container = els[`${listName}Items`];
+    const items = state.loading[listName];
     container.innerHTML = "";
-    state.loading.glass.forEach((item, index) => {
-      const row = document.createElement("div");
-      row.className = "loading-item-row loading-item-row-glass";
-      row.innerHTML = `
-        <span class="loading-item-num">${index + 1}</span>
-        <input type="checkbox" class="loading-check" ${item.checked ? "checked" : ""} />
-        <input type="text" class="loading-note" placeholder="შენიშვნა (არასავალდებულო)" value="${escapeHtml(item.note)}" />
-        <input type="text" class="loading-door" placeholder="კარი" value="${escapeHtml(item.door)}" />
-        <button type="button" class="loading-remove-btn" aria-label="წაშლა">×</button>
-      `;
-      row.querySelector(".loading-check").addEventListener("change", (event) => {
-        item.checked = event.target.checked;
-        clearAlert();
-      });
-      row.querySelector(".loading-note").addEventListener("input", (event) => {
-        item.note = event.target.value;
-        clearAlert();
-      });
-      row.querySelector(".loading-door").addEventListener("input", (event) => {
-        item.door = event.target.value;
-        clearAlert();
-      });
-      row.querySelector(".loading-remove-btn").addEventListener("click", () => {
-        state.loading.glass.splice(index, 1);
-        renderGlass();
-        clearAlert();
-      });
-      container.appendChild(row);
-    });
-    if (!state.loading.glass.length) {
-      container.innerHTML = '<p class="loading-empty">სია ცარიელია</p>';
-    }
-  }
-
-  function renderPanels() {
-    const container = els.panelItems;
-    container.innerHTML = "";
-    state.loading.panels.forEach((item, index) => {
+    items.forEach((item, index) => {
       const row = document.createElement("div");
       row.className = "loading-item-row loading-item-row-qty";
       row.innerHTML = `
@@ -158,94 +116,21 @@
         clearAlert();
       });
       row.querySelector(".loading-remove-btn").addEventListener("click", () => {
-        state.loading.panels.splice(index, 1);
-        renderPanels();
+        items.splice(index, 1);
+        renderQtyList(listName);
         clearAlert();
       });
       container.appendChild(row);
     });
-    if (!state.loading.panels.length) {
+    if (!items.length) {
       container.innerHTML = '<p class="loading-empty">სია ცარიელია</p>';
     }
-  }
-
-  function renderCustomLists() {
-    const container = els.customLists;
-    container.innerHTML = "";
-    state.loading.customLists.forEach((list, listIndex) => {
-      const card = document.createElement("div");
-      card.className = "custom-list-block";
-      card.innerHTML = `
-        <div class="custom-list-head">
-          <input type="text" class="custom-list-title" value="${escapeHtml(list.title)}" placeholder="სიის დასახელება" />
-          <button type="button" class="add-item-btn custom-add-item-btn">+ დამატება</button>
-          <button type="button" class="danger-action custom-remove-list-btn">სიის წაშლა</button>
-        </div>
-        <div class="loading-items custom-items"></div>
-      `;
-      card.querySelector(".custom-list-title").addEventListener("input", (event) => {
-        list.title = event.target.value;
-        clearAlert();
-      });
-      card.querySelector(".custom-remove-list-btn").addEventListener("click", () => {
-        state.loading.customLists.splice(listIndex, 1);
-        renderCustomLists();
-        clearAlert();
-      });
-      const itemsContainer = card.querySelector(".custom-items");
-      const renderCustomItems = () => {
-        itemsContainer.innerHTML = "";
-        list.items.forEach((item, itemIndex) => {
-          const row = document.createElement("div");
-          row.className = "loading-item-row loading-item-row-qty";
-          row.innerHTML = `
-            <input type="checkbox" class="loading-check" ${item.checked ? "checked" : ""} />
-            <input type="text" class="loading-name" placeholder="დასახელება" value="${escapeHtml(item.name)}" />
-            <input type="text" class="loading-qty" placeholder="რაოდ." value="${escapeHtml(item.qty)}" />
-            <button type="button" class="loading-remove-btn" aria-label="წაშლა">×</button>
-          `;
-          row.querySelector(".loading-check").addEventListener("change", (event) => {
-            item.checked = event.target.checked;
-            clearAlert();
-          });
-          row.querySelector(".loading-name").addEventListener("input", (event) => {
-            item.name = event.target.value;
-            clearAlert();
-          });
-          row.querySelector(".loading-qty").addEventListener("input", (event) => {
-            item.qty = event.target.value;
-            clearAlert();
-          });
-          row.querySelector(".loading-remove-btn").addEventListener("click", () => {
-            list.items.splice(itemIndex, 1);
-            renderCustomItems();
-            clearAlert();
-          });
-          itemsContainer.appendChild(row);
-        });
-        if (!list.items.length) {
-          itemsContainer.innerHTML = '<p class="loading-empty">სია ცარიელია</p>';
-        }
-      };
-      card.querySelector(".custom-add-item-btn").addEventListener("click", () => {
-        list.items.push(newCustomItem());
-        renderCustomItems();
-        clearAlert();
-      });
-      renderCustomItems();
-      container.appendChild(card);
-    });
   }
 
   // ---- Persistence ----
 
   function hasAnyContent(loading) {
-    return Boolean(
-      (loading.trays && loading.trays.length) ||
-      (loading.glass && loading.glass.length) ||
-      (loading.panels && loading.panels.length) ||
-      (loading.customLists && loading.customLists.some((list) => list.items.length))
-    );
+    return [...SIMPLE_LISTS, ...QTY_LISTS].some((key) => loading[key] && loading[key].length);
   }
 
   async function saveCurrentLoading() {
@@ -287,33 +172,24 @@
     const section = (title, body) => (body ? `<section class="report-section"><h2>${escapeHtml(title)}</h2>${body}</section>` : "");
     const checkMark = (checked) => (checked ? "✓" : "☐");
 
-    const trayList = state.loading.trays.length
-      ? `<ul>${state.loading.trays.map((item, i) => `<li>${checkMark(item.checked)} ${i + 1}. ${escapeHtml(item.note) || "დუშთასე " + (i + 1)}</li>`).join("")}</ul>`
-      : "";
+    const simpleListHtml = (items, fallbackLabel) =>
+      items.length
+        ? `<ul>${items.map((item, i) => `<li>${checkMark(item.checked)} ${i + 1}. ${escapeHtml(item.note) || fallbackLabel + " " + (i + 1)}</li>`).join("")}</ul>`
+        : "";
 
-    const glassList = state.loading.glass.length
-      ? `<ul>${state.loading.glass.map((item, i) => {
-          const doorPart = item.door ? ` — კარი: ${escapeHtml(item.door)}` : "";
-          return `<li>${checkMark(item.checked)} ${i + 1}. ${escapeHtml(item.note) || "შუშა " + (i + 1)}${doorPart}</li>`;
-        }).join("")}</ul>`
-      : "";
-
-    const panelList = state.loading.panels.length
-      ? `<ul>${state.loading.panels.map((item) => `<li>${checkMark(item.checked)} ${escapeHtml(item.name) || "—"}${item.qty ? " × " + escapeHtml(item.qty) : ""}</li>`).join("")}</ul>`
-      : "";
-
-    const customSections = state.loading.customLists
-      .filter((list) => list.items.length)
-      .map((list) => section(list.title || "დამატებითი სია", `<ul>${list.items.map((item) => `<li>${checkMark(item.checked)} ${escapeHtml(item.name) || "—"}${item.qty ? " × " + escapeHtml(item.qty) : ""}</li>`).join("")}</ul>`))
-      .join("");
+    const qtyListHtml = (items) =>
+      items.length
+        ? `<ul>${items.map((item) => `<li>${checkMark(item.checked)} ${escapeHtml(item.name) || "—"}${item.qty ? " × " + escapeHtml(item.qty) : ""}</li>`).join("")}</ul>`
+        : "";
 
     return `
       <h1>Shower Plan Assistant — დატვირთვის სია</h1>
       <p>${escapeHtml(state.loading.title) || "დატვირთვის სია"}</p>
-      ${section("დუშთასეები", trayList)}
-      ${section("შუშები", glassList)}
-      ${section("პანელები", panelList)}
-      ${customSections}
+      ${section("დუშთასეები", simpleListHtml(state.loading.trays, "დუშთასე"))}
+      ${section("შუშები", simpleListHtml(state.loading.glass, "შუშა"))}
+      ${section("კარები", simpleListHtml(state.loading.doors, "კარი"))}
+      ${section("პანელები", qtyListHtml(state.loading.panels))}
+      ${section("სხვა", qtyListHtml(state.loading.extras))}
     `;
   }
 
@@ -418,18 +294,15 @@
     document.querySelectorAll(".add-item-btn[data-add]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const listName = btn.dataset.add;
-        if (listName === "trays") state.loading.trays.push(newTray());
-        if (listName === "glass") state.loading.glass.push(newGlass());
-        if (listName === "panels") state.loading.panels.push(newPanel());
-        renderAll();
+        if (SIMPLE_LISTS.includes(listName)) {
+          state.loading[listName].push(newSimpleItem());
+          renderSimpleList(listName);
+        } else if (QTY_LISTS.includes(listName)) {
+          state.loading[listName].push(newQtyItem());
+          renderQtyList(listName);
+        }
         clearAlert();
       });
-    });
-
-    els.addCustomListBtn.addEventListener("click", () => {
-      state.loading.customLists.push(newCustomList(`სია ${state.loading.customLists.length + 1}`));
-      renderCustomLists();
-      clearAlert();
     });
 
     els.clearBtn.addEventListener("click", () => {
@@ -453,9 +326,9 @@
     els.titleLabel = $("#loadingTitleLabel");
     els.trayItems = $("#trayItems");
     els.glassItems = $("#glassItems");
+    els.doorItems = $("#doorItems");
     els.panelItems = $("#panelItems");
-    els.customLists = $("#customLists");
-    els.addCustomListBtn = $("#addCustomListBtn");
+    els.extraItems = $("#extraItems");
     els.clearBtn = $("#loadingClearBtn");
     els.saveBtn = $("#loadingSaveBtn");
     els.exportBtn = $("#loadingExportBtn");
@@ -475,8 +348,6 @@
 
   window.LoadingMode = {
     init,
-    onShow() {
-      // Views are re-rendered on every change already; nothing extra needed on show.
-    }
+    onShow() {}
   };
 })();
