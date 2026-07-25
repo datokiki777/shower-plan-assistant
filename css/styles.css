@@ -108,6 +108,10 @@ button:disabled { opacity: 0.55; cursor: wait; }
   align-items: start;
 }
 
+.workspace[hidden] {
+  display: none !important;
+}
+
 .manual-workspace {
   grid-template-columns: 1fr;
 }
