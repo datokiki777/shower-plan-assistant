@@ -40,7 +40,10 @@ const els = {
   modeReportBtn: $("#modeReportBtn"),
   modeLoadingBtn: $("#modeLoadingBtn"),
   reportView: $("#reportView"),
-  loadingView: $("#loadingView")
+  loadingView: $("#loadingView"),
+  updateDialog: $("#updateDialog"),
+  updateYesBtn: $("#updateYesBtn"),
+  updateNoBtn: $("#updateNoBtn")
 };
 
 function setMode(mode) {
@@ -423,44 +426,62 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
-function showUpdateToast() {
-  let toast = document.querySelector(".update-toast");
-  if (!toast) {
-    toast = document.createElement("div");
-    toast.className = "update-toast";
-    toast.innerHTML = `
-      <div>
-        <strong>ახალი ვერსია მზადაა</strong>
-        <span>განაახლე app, რომ ბოლო ცვლილებები ჩაიტვირთოს.</span>
-      </div>
-      <button class="primary" type="button">განახლება</button>
-    `;
-    toast.querySelector("button").addEventListener("click", () => window.location.reload());
-    document.body.appendChild(toast);
+function showUpdateDialog(onConfirm) {
+  const dialog = els.updateDialog;
+  if (!dialog) {
+    // Fallback if dialog markup is missing for any reason.
+    if (window.confirm("ახალი ვერსია მზადაა. განახლდეს ახლავე?")) onConfirm();
+    return;
   }
-  toast.classList.add("is-visible");
+  if (typeof dialog.showModal === "function" && !dialog.open) dialog.showModal();
+
+  const onYes = () => {
+    cleanup();
+    dialog.close();
+    onConfirm();
+  };
+  const onNo = () => {
+    cleanup();
+    dialog.close();
+  };
+  function cleanup() {
+    els.updateYesBtn.removeEventListener("click", onYes);
+    els.updateNoBtn.removeEventListener("click", onNo);
+  }
+  els.updateYesBtn.addEventListener("click", onYes);
+  els.updateNoBtn.addEventListener("click", onNo);
 }
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
 
-  let updateSeen = false;
+  let promptShown = false;
+  function promptForUpdate(registration) {
+    if (promptShown) return;
+    const waitingWorker = registration.waiting;
+    if (!waitingWorker) return;
+    promptShown = true;
+    showUpdateDialog(() => {
+      waitingWorker.postMessage({ type: "SKIP_WAITING" });
+    });
+  }
+
   navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (updateSeen) return;
-    updateSeen = true;
-    showUpdateToast();
+    window.location.reload();
   });
 
   navigator.serviceWorker
     .register("service-worker.js")
     .then((registration) => {
+      if (registration.waiting && navigator.serviceWorker.controller) {
+        promptForUpdate(registration);
+      }
       registration.addEventListener("updatefound", () => {
         const worker = registration.installing;
         if (!worker) return;
         worker.addEventListener("statechange", () => {
           if (worker.state === "installed" && navigator.serviceWorker.controller) {
-            worker.postMessage({ type: "SKIP_WAITING" });
-            showUpdateToast();
+            promptForUpdate(registration);
           }
         });
       });
