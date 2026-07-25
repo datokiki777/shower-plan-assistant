@@ -545,12 +545,7 @@ select:focus {
 }
 
 .loading-list-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
   margin-bottom: 10px;
-  flex-wrap: wrap;
 }
 
 .loading-list-head h3 {
@@ -566,6 +561,11 @@ select:focus {
   border-color: #bcd6d0;
 }
 
+.add-item-btn-bottom {
+  width: 100%;
+  margin-top: 4px;
+}
+
 .loading-item-row {
   display: grid;
   grid-template-columns: 22px 22px 1fr 34px;
@@ -578,6 +578,14 @@ select:focus {
 .loading-item-row-qty {
   grid-template-columns: 22px 1fr 90px 34px;
   grid-template-areas: "check name qty remove";
+}
+
+.loading-item-row-glass {
+  grid-template-columns: 22px 22px 1fr 34px;
+  grid-template-areas:
+    "num check note remove"
+    ".   .     door .";
+  row-gap: 6px;
 }
 
 .loading-item-num {
@@ -599,6 +607,10 @@ select:focus {
   grid-area: note;
 }
 
+.loading-door {
+  grid-area: door;
+}
+
 .loading-name {
   grid-area: name;
 }
@@ -608,6 +620,7 @@ select:focus {
 }
 
 .loading-note,
+.loading-door,
 .loading-name,
 .loading-qty {
   margin: 0;
@@ -740,6 +753,15 @@ select:focus {
     grid-template-areas:
       "num check remove"
       "note note note";
+    row-gap: 6px;
+  }
+
+  .loading-item-row-glass {
+    grid-template-columns: 22px 22px 1fr;
+    grid-template-areas:
+      "num check remove"
+      "note note note"
+      "door door door";
     row-gap: 6px;
   }
 
