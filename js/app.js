@@ -46,13 +46,32 @@ const els = {
   updateNoBtn: $("#updateNoBtn")
 };
 
-function setMode(mode) {
+const MODE_STORAGE_KEY = "shower-plan-assistant-mode";
+
+function setMode(mode, persist = true) {
   const isLoading = mode === "loading";
   els.reportView.hidden = isLoading;
   els.loadingView.hidden = !isLoading;
   els.modeReportBtn.classList.toggle("is-active", !isLoading);
   els.modeLoadingBtn.classList.toggle("is-active", isLoading);
   if (isLoading) window.LoadingMode?.onShow();
+  if (persist) {
+    try {
+      localStorage.setItem(MODE_STORAGE_KEY, isLoading ? "loading" : "report");
+    } catch {
+      // localStorage unavailable (private mode etc.) - ignore, mode just won't persist.
+    }
+  }
+}
+
+function restoreMode() {
+  let storedMode = "report";
+  try {
+    storedMode = localStorage.getItem(MODE_STORAGE_KEY) || "report";
+  } catch {
+    storedMode = "report";
+  }
+  setMode(storedMode === "loading" ? "loading" : "report", false);
 }
 
 function createEmptyReport() {
@@ -532,6 +551,7 @@ async function init() {
   syncFormFromReport();
   await renderHistory();
   window.LoadingMode?.init();
+  restoreMode();
   registerServiceWorker();
 }
 
