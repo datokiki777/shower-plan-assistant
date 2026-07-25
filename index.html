@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="css/styles.css" />
   <script defer src="js/sketch-editor.js"></script>
   <script defer src="js/app.js"></script>
+  <script defer src="js/loading.js"></script>
 </head>
 <body>
   <main class="app-shell">
@@ -19,9 +20,13 @@
         <p class="eyebrow">Manual Georgian report</p>
         <h1>Shower Plan Assistant</h1>
       </div>
+      <div class="mode-toggle" role="group" aria-label="რეჟიმის არჩევა">
+        <button type="button" id="modeReportBtn" class="mode-toggle-btn is-active">ანგარიში</button>
+        <button type="button" id="modeLoadingBtn" class="mode-toggle-btn">დატვირთვა</button>
+      </div>
     </header>
 
-    <section class="workspace manual-workspace">
+    <section id="reportView" class="workspace manual-workspace">
       <section class="report-panel manual-report-panel">
         <div class="report-toolbar">
           <div>
@@ -92,6 +97,70 @@
             <button type="button" id="clearHistoryBtn">წაშლა</button>
           </div>
           <div id="historyList" class="history-list"></div>
+        </section>
+      </section>
+    </section>
+
+    <section id="loadingView" class="workspace loading-workspace" hidden>
+      <section class="report-panel loading-panel">
+        <div class="report-toolbar">
+          <div>
+            <p class="eyebrow">დატვირთვის სია</p>
+            <h2 id="loadingTitleLabel">ახალი დატვირთვა</h2>
+          </div>
+          <div class="toolbar-actions">
+            <button type="button" id="loadingClearBtn">გასუფთავება</button>
+            <button type="button" id="loadingSaveBtn">შენახვა</button>
+            <button class="primary" type="button" id="loadingExportBtn">PDF export</button>
+          </div>
+        </div>
+
+        <div class="alert" id="loadingAlertBox" hidden></div>
+
+        <label class="loading-title-field">სამუშაოს დასახელება (არასავალდებულო)
+          <input type="text" id="loadingTitleInput" placeholder="მაგ. კლიენტის სახელი ან მისამართი" />
+        </label>
+
+        <div class="loading-grid">
+          <section class="form-card loading-list-card" data-list="trays">
+            <div class="loading-list-head">
+              <h3>დუშთასეები</h3>
+              <button type="button" class="add-item-btn" data-add="trays">+ დამატება</button>
+            </div>
+            <div class="loading-items" id="trayItems"></div>
+          </section>
+
+          <section class="form-card loading-list-card" data-list="glass">
+            <div class="loading-list-head">
+              <h3>შუშები</h3>
+              <button type="button" class="add-item-btn" data-add="glass">+ დამატება</button>
+            </div>
+            <div class="loading-items" id="glassItems"></div>
+          </section>
+
+          <section class="form-card loading-list-card" data-list="panels">
+            <div class="loading-list-head">
+              <h3>პანელები</h3>
+              <button type="button" class="add-item-btn" data-add="panels">+ დამატება</button>
+            </div>
+            <div class="loading-items" id="panelItems"></div>
+          </section>
+
+          <section class="form-card loading-list-card wide" id="customListsCard">
+            <div class="loading-list-head">
+              <h3>დამატებითი სიები</h3>
+              <button type="button" id="addCustomListBtn">+ ახალი სია</button>
+            </div>
+            <div id="customLists"></div>
+          </section>
+        </div>
+
+        <section class="history loading-history">
+          <div class="section-head">
+            <h2>დატვირთვის ისტორია</h2>
+            <button type="button" id="loadingClearHistoryBtn">წაშლა</button>
+          </div>
+          <div id="loadingHistoryList" class="history-list"></div>
         </section>
       </section>
     </section>
