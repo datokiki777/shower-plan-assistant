@@ -570,10 +570,6 @@ select:focus {
   margin-bottom: 8px;
 }
 
-.loading-item-row-glass {
-  grid-template-columns: 22px 22px 1fr 1fr 34px;
-}
-
 .loading-item-row-qty {
   grid-template-columns: 22px 1fr 90px 34px;
 }
@@ -612,28 +608,6 @@ select:focus {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
-}
-
-.custom-list-block {
-  padding: 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
-  margin-bottom: 10px;
-}
-
-.custom-list-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
-}
-
-.custom-list-title {
-  flex: 1 1 160px;
-  min-height: 38px;
-  font-weight: 750;
 }
 
 .printable-report {
@@ -741,7 +715,6 @@ select:focus {
   }
 
   .loading-item-row,
-  .loading-item-row-glass,
   .loading-item-row-qty {
     grid-template-columns: 22px 1fr;
     grid-auto-flow: row;
