@@ -1,8 +1,15 @@
 (function () {
   const $ = (selector) => document.querySelector(selector);
 
-  const SIMPLE_LISTS = ["trays", "glass", "doors"];
-  const QTY_LISTS = ["panels", "extras"];
+  const ORDINALS = [
+    "პირველი", "მეორე", "მესამე", "მეოთხე", "მეხუთე",
+    "მეექვსე", "მეშვიდე", "მერვე", "მეცხრე", "მეათე",
+    "მეთერთმეტე", "მეთორმეტე", "მეცამეტე", "მეთოთხმეტე", "მეთხუთმეტე",
+    "მეთექვსმეტე", "მეჩვიდმეტე", "მეთვრამეტე", "მეცხრამეტე", "მეოცე"
+  ];
+  function ordinalWord(n) {
+    return ORDINALS[n - 1] || `${n}-ე`;
+  }
 
   const els = {};
   let state = { loading: createEmptyLoading() };
@@ -15,14 +22,16 @@
       title: "",
       trays: [],
       glass: [],
-      doors: [],
       panels: [],
       extras: []
     };
   }
 
-  function newSimpleItem() {
+  function newTrayItem() {
     return { id: crypto.randomUUID(), note: "", checked: false };
+  }
+  function newGlassItem() {
+    return { id: crypto.randomUUID(), note: "", door: "", checked: false };
   }
   function newQtyItem() {
     return { id: crypto.randomUUID(), name: "", qty: "", checked: false };
@@ -53,13 +62,15 @@
   function renderAll() {
     els.titleInput.value = state.loading.title || "";
     els.titleLabel.textContent = state.loading.title || "ახალი დატვირთვა";
-    SIMPLE_LISTS.forEach(renderSimpleList);
-    QTY_LISTS.forEach(renderQtyList);
+    renderTrays();
+    renderGlass();
+    renderQtyList("panels");
+    renderQtyList("extras");
   }
 
-  function renderSimpleList(listName) {
-    const container = els.containers[listName];
-    const items = state.loading[listName];
+  function renderTrays() {
+    const container = els.containers.trays;
+    const items = state.loading.trays;
     container.innerHTML = "";
     items.forEach((item, index) => {
       const row = document.createElement("div");
@@ -67,7 +78,7 @@
       row.innerHTML = `
         <span class="loading-item-num">${index + 1}</span>
         <input type="checkbox" class="loading-check" ${item.checked ? "checked" : ""} />
-        <input type="text" class="loading-note" placeholder="შენიშვნა (არასავალდებულო)" value="${escapeHtml(item.note)}" />
+        <input type="text" class="loading-note" placeholder="${escapeHtml(ordinalWord(index + 1))}" value="${escapeHtml(item.note)}" />
         <button type="button" class="loading-remove-btn" aria-label="წაშლა">×</button>
       `;
       row.querySelector(".loading-check").addEventListener("change", (event) => {
@@ -80,7 +91,45 @@
       });
       row.querySelector(".loading-remove-btn").addEventListener("click", () => {
         items.splice(index, 1);
-        renderSimpleList(listName);
+        renderTrays();
+        clearAlert();
+      });
+      container.appendChild(row);
+    });
+    if (!items.length) {
+      container.innerHTML = '<p class="loading-empty">სია ცარიელია</p>';
+    }
+  }
+
+  function renderGlass() {
+    const container = els.containers.glass;
+    const items = state.loading.glass;
+    container.innerHTML = "";
+    items.forEach((item, index) => {
+      const row = document.createElement("div");
+      row.className = "loading-item-row loading-item-row-glass";
+      row.innerHTML = `
+        <span class="loading-item-num">${index + 1}</span>
+        <input type="checkbox" class="loading-check" ${item.checked ? "checked" : ""} />
+        <input type="text" class="loading-note" placeholder="${escapeHtml(ordinalWord(index + 1))}" value="${escapeHtml(item.note)}" />
+        <input type="text" class="loading-door" placeholder="კარი (არასავალდებულო)" value="${escapeHtml(item.door)}" />
+        <button type="button" class="loading-remove-btn" aria-label="წაშლა">×</button>
+      `;
+      row.querySelector(".loading-check").addEventListener("change", (event) => {
+        item.checked = event.target.checked;
+        clearAlert();
+      });
+      row.querySelector(".loading-note").addEventListener("input", (event) => {
+        item.note = event.target.value;
+        clearAlert();
+      });
+      row.querySelector(".loading-door").addEventListener("input", (event) => {
+        item.door = event.target.value;
+        clearAlert();
+      });
+      row.querySelector(".loading-remove-btn").addEventListener("click", () => {
+        items.splice(index, 1);
+        renderGlass();
         clearAlert();
       });
       container.appendChild(row);
@@ -130,7 +179,7 @@
   // ---- Persistence ----
 
   function hasAnyContent(loading) {
-    return [...SIMPLE_LISTS, ...QTY_LISTS].some((key) => loading[key] && loading[key].length);
+    return ["trays", "glass", "panels", "extras"].some((key) => loading[key] && loading[key].length);
   }
 
   async function saveCurrentLoading() {
@@ -170,24 +219,35 @@
 
   function buildPrintableLoadingContent() {
     const section = (title, body) => (body ? `<section class="report-section"><h2>${escapeHtml(title)}</h2>${body}</section>` : "");
-    const checkMark = (checked) => (checked ? "✓" : "☐");
 
-    const simpleListHtml = (items, fallbackLabel) =>
-      items.length
-        ? `<ul>${items.map((item, i) => `<li>${checkMark(item.checked)} ${i + 1}. ${escapeHtml(item.note) || fallbackLabel + " " + (i + 1)}</li>`).join("")}</ul>`
-        : "";
+    const trayListHtml = state.loading.trays.length
+      ? `<ul>${state.loading.trays.map((item, i) => `<li>${i + 1}. ${escapeHtml(item.note.trim()) || escapeHtml(ordinalWord(i + 1))}</li>`).join("")}</ul>`
+      : "";
+
+    const glassListHtml = state.loading.glass.length
+      ? `<ul>${state.loading.glass
+          .map((item, i) => {
+            const noteTrim = item.note.trim();
+            const doorTrim = item.door.trim();
+            const parts = [];
+            if (noteTrim) parts.push(escapeHtml(noteTrim));
+            if (doorTrim) parts.push(`კარი: ${escapeHtml(doorTrim)}`);
+            const text = parts.length ? parts.join(" — ") : escapeHtml(ordinalWord(i + 1));
+            return `<li>${i + 1}. ${text}</li>`;
+          })
+          .join("")}</ul>`
+      : "";
 
     const qtyListHtml = (items) =>
       items.length
-        ? `<ul>${items.map((item) => `<li>${checkMark(item.checked)} ${escapeHtml(item.name) || "—"}${item.qty ? " × " + escapeHtml(item.qty) : ""}</li>`).join("")}</ul>`
+        ? `<ul>${items.map((item) => `<li>${escapeHtml(item.name) || "—"}${item.qty ? " × " + escapeHtml(item.qty) : ""}</li>`).join("")}</ul>`
         : "";
 
     return `
       <h1>Shower Plan Assistant — დატვირთვის სია</h1>
       <p>${escapeHtml(state.loading.title) || "დატვირთვის სია"}</p>
-      ${section("დუშთასეები", simpleListHtml(state.loading.trays, "დუშთასე"))}
-      ${section("შუშები", simpleListHtml(state.loading.glass, "შუშა"))}
-      ${section("კარები", simpleListHtml(state.loading.doors, "კარი"))}
+      ${section("დუშთასეები", trayListHtml)}
+      ${section("შუშები (+ კარი)", glassListHtml)}
       ${section("პანელები", qtyListHtml(state.loading.panels))}
       ${section("სხვა", qtyListHtml(state.loading.extras))}
     `;
@@ -227,7 +287,6 @@
     .report-section:nth-of-type(2) { background: #ffedc2; border-color: #d7ae50; }
     .report-section:nth-of-type(3) { background: #dceeff; border-color: #9bbfe0; }
     .report-section:nth-of-type(4) { background: #ffe2d8; border-color: #df9e88; }
-    .report-section:nth-of-type(5) { background: #ece3ff; border-color: #b7a1dd; }
     h1 { margin: 0 0 3px; font-size: 18px; }
     h2 { margin: 0 0 4px; font-size: 12px; color: #0e5c56; border-bottom: 1px solid #d9e1df; padding-bottom: 3px; }
     p { margin: 1px 0; font-size: 10.5px; }
@@ -294,10 +353,13 @@
     document.querySelectorAll(".add-item-btn[data-add]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const listName = btn.dataset.add;
-        if (SIMPLE_LISTS.includes(listName)) {
-          state.loading[listName].push(newSimpleItem());
-          renderSimpleList(listName);
-        } else if (QTY_LISTS.includes(listName)) {
+        if (listName === "trays") {
+          state.loading.trays.push(newTrayItem());
+          renderTrays();
+        } else if (listName === "glass") {
+          state.loading.glass.push(newGlassItem());
+          renderGlass();
+        } else if (listName === "panels" || listName === "extras") {
           state.loading[listName].push(newQtyItem());
           renderQtyList(listName);
         }
@@ -327,7 +389,6 @@
     els.containers = {
       trays: $("#trayItems"),
       glass: $("#glassItems"),
-      doors: $("#doorItems"),
       panels: $("#panelItems"),
       extras: $("#extraItems")
     };
