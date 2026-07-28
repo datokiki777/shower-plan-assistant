@@ -9,6 +9,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" type="image/png" href="icons/favicon.png" />
   <link rel="stylesheet" href="css/styles.css" />
+  <script defer src="js/vendor/html2canvas.min.js"></script>
   <script defer src="js/sketch-editor.js"></script>
   <script defer src="js/app.js"></script>
   <script defer src="js/loading.js"></script>
@@ -48,6 +49,12 @@
             <label>სახელი და გვარი <input name="clientName" /></label>
             <label>მისამართი <textarea name="address" rows="3"></textarea></label>
             <label>ტელეფონი <input name="phone" /></label>
+            <label>Google Maps ლინკი <input name="googleMapsLink" type="url" placeholder="https://maps.google.com/..." /></label>
+            <label>ჯგუფი
+              <select name="groupId" id="groupSelect">
+                <option value="">— ჯგუფის გარეშე —</option>
+              </select>
+            </label>
           </section>
 
           <section class="form-card">
@@ -90,6 +97,17 @@
             <button type="button" id="removeSketchBtn" class="danger-action" hidden>ნახაზის წაშლა</button>
           </section>
         </form>
+
+        <section class="history groups-panel">
+          <div class="section-head">
+            <h2>ჯგუფები</h2>
+          </div>
+          <div class="add-group-row">
+            <input type="text" id="newGroupInput" placeholder="ახალი ჯგუფის დასახელება" />
+            <button class="primary" type="button" id="addGroupBtn">+ ჯგუფი</button>
+          </div>
+          <div id="groupsList" class="groups-list"></div>
+        </section>
 
         <section class="history manual-history">
           <div class="section-head">

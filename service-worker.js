@@ -1,10 +1,11 @@
-const CACHE = "shower-plan-assistant-v35";
+const CACHE = "shower-plan-assistant-v36";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
   "./config.js",
   "./css/styles.css",
+  "./js/vendor/html2canvas.min.js",
   "./js/sketch-editor.js",
   "./js/app.js",
   "./js/loading.js",

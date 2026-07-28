@@ -1,12 +1,15 @@
 const DB_NAME = "shower-plan-assistant";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE = "reports";
 const LOADING_STORE = "loadingLists";
+const GROUP_STORE = "groups";
 
 const fields = [
   "clientName",
   "address",
   "phone",
+  "googleMapsLink",
+  "groupId",
   "packageType",
   "showerTraySize",
   "antiSlip",
@@ -21,7 +24,8 @@ const fields = [
 ];
 
 const state = {
-  report: createEmptyReport()
+  report: createEmptyReport(),
+  groups: []
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -43,7 +47,11 @@ const els = {
   loadingView: $("#loadingView"),
   updateDialog: $("#updateDialog"),
   updateYesBtn: $("#updateYesBtn"),
-  updateNoBtn: $("#updateNoBtn")
+  updateNoBtn: $("#updateNoBtn"),
+  groupSelect: $("#groupSelect"),
+  newGroupInput: $("#newGroupInput"),
+  addGroupBtn: $("#addGroupBtn"),
+  groupsList: $("#groupsList")
 };
 
 const MODE_STORAGE_KEY = "shower-plan-assistant-mode";
@@ -81,6 +89,8 @@ function createEmptyReport() {
     clientName: "",
     address: "",
     phone: "",
+    googleMapsLink: "",
+    groupId: "",
     packageType: "",
     showerTraySize: "",
     antiSlip: "",
@@ -171,6 +181,7 @@ function openDb() {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: "id" });
       if (!db.objectStoreNames.contains(LOADING_STORE)) db.createObjectStore(LOADING_STORE, { keyPath: "id" });
+      if (!db.objectStoreNames.contains(GROUP_STORE)) db.createObjectStore(GROUP_STORE, { keyPath: "id" });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -221,6 +232,10 @@ const putReport = (report) => putRecord(STORE, report);
 const getReports = () => getRecords(STORE);
 const clearReports = () => clearRecords(STORE);
 
+const putGroup = (group) => putRecord(GROUP_STORE, group);
+const getGroups = () => getRecords(GROUP_STORE);
+const deleteGroup = (id) => deleteRecord(GROUP_STORE, id);
+
 window.AppDB = { putRecord, getRecords, clearRecords, deleteRecord, LOADING_STORE };
 
 async function saveCurrentReport(showMessage = true) {
@@ -228,6 +243,7 @@ async function saveCurrentReport(showMessage = true) {
   state.report.createdAt = new Date().toISOString();
   await putReport(state.report);
   await renderHistory();
+  await renderGroupsPanel();
   if (showMessage) showAlert("ანგარიში შენახულია ისტორიაში.", "ok");
 }
 
@@ -251,6 +267,242 @@ async function renderHistory() {
     });
     els.historyList.appendChild(item);
   });
+}
+
+async function loadGroups() {
+  state.groups = await getGroups();
+  renderGroupSelectOptions();
+}
+
+function renderGroupSelectOptions() {
+  if (!els.groupSelect) return;
+  const current = state.report.groupId || "";
+  const sorted = [...state.groups].sort((a, b) => String(a.name).localeCompare(String(b.name), "ka"));
+  els.groupSelect.innerHTML =
+    '<option value="">— ჯგუფის გარეშე —</option>' +
+    sorted.map((g) => `<option value="${escapeHtml(g.id)}">${escapeHtml(g.name)}</option>`).join("");
+  els.groupSelect.value = current;
+}
+
+async function addGroup() {
+  const name = (els.newGroupInput?.value || "").trim();
+  if (!name) {
+    showAlert("ჯგუფის დასახელება ცარიელია.", "warn");
+    return;
+  }
+  const group = { id: crypto.randomUUID(), name, createdAt: new Date().toISOString() };
+  await putGroup(group);
+  els.newGroupInput.value = "";
+  await loadGroups();
+  await renderGroupsPanel();
+  showAlert(`ჯგუფი „${name}“ დაემატა.`, "ok");
+}
+
+async function renameGroupPrompt(group) {
+  const nextName = window.prompt("ჯგუფის ახალი დასახელება:", group.name);
+  if (nextName == null) return;
+  const trimmed = nextName.trim();
+  if (!trimmed) return;
+  await putGroup({ ...group, name: trimmed });
+  await loadGroups();
+  await renderGroupsPanel();
+}
+
+async function removeGroup(group) {
+  const clientCount = (await getReports()).filter((r) => r.groupId === group.id).length;
+  const message = clientCount
+    ? `ჯგუფი „${group.name}“ შეიცავს ${clientCount} კლიენტს. წაშლის შემდეგ კლიენტები დარჩება „ჯგუფის გარეშე“ სიაში. წავშალო?`
+    : `წავშალო ჯგუფი „${group.name}“?`;
+  if (!window.confirm(message)) return;
+  await deleteGroup(group.id);
+  await loadGroups();
+  if (state.report.groupId === group.id) {
+    state.report.groupId = "";
+    renderGroupSelectOptions();
+  }
+  await renderGroupsPanel();
+}
+
+async function deleteClientReport(report) {
+  if (!window.confirm(`წავშალო კლიენტი „${report.clientName || "უსახელო"}“?`)) return;
+  await deleteRecord(STORE, report.id);
+  if (state.report.id === report.id) {
+    state.report = createEmptyReport();
+    syncFormFromReport();
+  }
+  await renderHistory();
+  await renderGroupsPanel();
+  showAlert("კლიენტი წაიშალა.", "info");
+}
+
+function loadClientIntoForm(report) {
+  state.report = normalizeReport(report);
+  syncFormFromReport();
+  renderGroupSelectOptions();
+  showAlert("კლიენტი ჩაიტვირთა ფორმაში.", "info");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+async function renderGroupsPanel() {
+  if (!els.groupsList) return;
+  const [groups, reports] = await Promise.all([getGroups(), getReports()]);
+  state.groups = groups;
+  const sortedGroups = [...groups].sort((a, b) => String(a.name).localeCompare(String(b.name), "ka"));
+  const byGroup = new Map(sortedGroups.map((g) => [g.id, []]));
+  const ungrouped = [];
+  reports.forEach((r) => {
+    if (r.groupId && byGroup.has(r.groupId)) byGroup.get(r.groupId).push(r);
+    else ungrouped.push(r);
+  });
+  byGroup.forEach((list) => list.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt))));
+  ungrouped.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+
+  const renderClientRow = (report) => {
+    const dateLabel = new Date(report.createdAt).toLocaleString("ka-GE");
+    const mapsBtn = report.googleMapsLink
+      ? `<button type="button" class="client-maps-btn" data-action="maps" data-id="${escapeHtml(report.id)}">📍 რუკა</button>`
+      : "";
+    return `
+      <div class="client-row" data-id="${escapeHtml(report.id)}">
+        <div class="client-row-info">
+          <strong>${escapeHtml(report.clientName || "უსახელო კლიენტი")}</strong>
+          <small>${dateLabel}</small>
+        </div>
+        <div class="client-row-actions">
+          <button type="button" data-action="load" data-id="${escapeHtml(report.id)}">ჩატვირთვა</button>
+          ${mapsBtn}
+          <button type="button" class="primary" data-action="share" data-id="${escapeHtml(report.id)}">გაზიარება</button>
+          <button type="button" class="danger-action" data-action="delete" data-id="${escapeHtml(report.id)}">წაშლა</button>
+        </div>
+      </div>`;
+  };
+
+  const groupBlocks = sortedGroups
+    .map((g) => {
+      const clients = byGroup.get(g.id) || [];
+      return `
+        <div class="group-card" data-group-id="${escapeHtml(g.id)}">
+          <div class="group-card-head">
+            <strong>${escapeHtml(g.name)}</strong>
+            <span class="group-count">${clients.length} კლიენტი</span>
+            <div class="group-card-actions">
+              <button type="button" data-group-action="rename" data-id="${escapeHtml(g.id)}">გადარქმევა</button>
+              <button type="button" class="danger-action" data-group-action="delete" data-id="${escapeHtml(g.id)}">წაშლა</button>
+            </div>
+          </div>
+          <div class="group-clients">
+            ${clients.length ? clients.map(renderClientRow).join("") : '<p class="loading-empty">კლიენტები ჯერ არ არის</p>'}
+          </div>
+        </div>`;
+    })
+    .join("");
+
+  const ungroupedBlock = `
+    <div class="group-card">
+      <div class="group-card-head">
+        <strong>ჯგუფის გარეშე</strong>
+        <span class="group-count">${ungrouped.length} კლიენტი</span>
+      </div>
+      <div class="group-clients">
+        ${ungrouped.length ? ungrouped.map(renderClientRow).join("") : '<p class="loading-empty">კლიენტები არ არის</p>'}
+      </div>
+    </div>`;
+
+  els.groupsList.innerHTML =
+    (groupBlocks || "") + (sortedGroups.length ? "" : "") + (ungrouped.length || sortedGroups.length ? ungroupedBlock : "");
+
+  if (!sortedGroups.length && !ungrouped.length) {
+    els.groupsList.innerHTML = '<p class="loading-empty">ჯერ არც ჯგუფი და არც კლიენტია დამატებული</p>';
+  }
+}
+
+function bindGroupsListEvents() {
+  els.groupsList?.addEventListener("click", async (event) => {
+    const clientBtn = event.target.closest("[data-action]");
+    if (clientBtn) {
+      const id = clientBtn.dataset.id;
+      const reports = await getReports();
+      const report = reports.find((r) => r.id === id);
+      if (!report) return;
+      const action = clientBtn.dataset.action;
+      if (action === "load") loadClientIntoForm(report);
+      else if (action === "maps") window.open(report.googleMapsLink, "_blank", "noopener");
+      else if (action === "share") shareReport(report, clientBtn);
+      else if (action === "delete") deleteClientReport(report);
+      return;
+    }
+    const groupBtn = event.target.closest("[data-group-action]");
+    if (groupBtn) {
+      const id = groupBtn.dataset.id;
+      const group = state.groups.find((g) => g.id === id);
+      if (!group) return;
+      if (groupBtn.dataset.groupAction === "rename") renameGroupPrompt(group);
+      else if (groupBtn.dataset.groupAction === "delete") removeGroup(group);
+    }
+  });
+}
+
+async function generateReportImageBlob(report) {
+  if (!window.html2canvas) throw new Error("html2canvas ვერ ჩაიტვირთა");
+  const wrapper = document.createElement("div");
+  wrapper.className = "printable-report share-capture";
+  wrapper.innerHTML = buildPrintableReportContent(report);
+  document.body.appendChild(wrapper);
+  await new Promise((resolve) => window.setTimeout(resolve, 60));
+  try {
+    const canvas = await window.html2canvas(wrapper, { backgroundColor: "#ffffff", scale: 2, useCORS: true });
+    return await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  } finally {
+    wrapper.remove();
+  }
+}
+
+async function shareReport(report, triggerBtn) {
+  clearAlert();
+  if (triggerBtn) triggerBtn.disabled = true;
+  try {
+    const blob = await generateReportImageBlob(report);
+    if (!blob) throw new Error("სურათი ვერ შეიქმნა");
+    const fileName = `${(report.clientName || "client").replace(/\s+/g, "_")}.png`;
+    const file = new File([blob], fileName, { type: "image/png" });
+    const shareText = report.googleMapsLink ? report.googleMapsLink : "";
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: report.clientName || "კლიენტი",
+        text: shareText
+      });
+      showAlert("გაზიარება გაიხსნა.", "ok");
+      return;
+    }
+
+    // Fallback for browsers without file Web Share support: download image + copy maps link.
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    if (shareText && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(shareText);
+        showAlert("სურათი ჩამოიტვირთა, Maps ლინკი დაკოპირდა — ჩასვი WhatsApp-ში.", "ok");
+        return;
+      } catch {
+        // clipboard permission may be denied; fall through to plain message
+      }
+    }
+    showAlert("სურათი ჩამოიტვირთა. ეს მოწყობილობა/ბრაუზერი პირდაპირ გაზიარებას ვერ უჭერს მხარს.", "warn");
+  } catch (error) {
+    if (error?.name !== "AbortError") {
+      showAlert("გაზიარება ვერ განხორციელდა, სცადე თავიდან.", "warn");
+    }
+  } finally {
+    if (triggerBtn) triggerBtn.disabled = false;
+  }
 }
 
 function exportPdf() {
@@ -381,32 +633,32 @@ function printStandaloneReport() {
   popup.document.close();
 }
 
-function buildPrintableReportContent() {
+function buildPrintableReportContent(report = state.report) {
   const section = (title, body) => (body ? `<section class="report-section"><h2>${escapeHtml(title)}</h2>${body}</section>` : "");
   const text = (value) => escapeHtml(value).replace(/\r?\n/g, "<br>");
   const p = (label, value) => (hasValue(value) ? `<p><strong>${escapeHtml(label)}:</strong> ${text(value)}</p>` : "");
   const list = (items) => (hasValue(items) ? `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "");
 
   const client = [
-    p("კლიენტი", state.report.clientName),
-    p("მისამართი", state.report.address),
-    p("ტელეფონი", state.report.phone)
+    p("კლიენტი", report.clientName),
+    p("მისამართი", report.address),
+    p("ტელეფონი", report.phone)
   ].join("");
   const packageInfo = [
-    p("პაკეტი", state.report.packageType),
-    p("დუშთასე", state.report.showerTraySize),
-    p("ანტირუჩი", state.report.antiSlip)
+    p("პაკეტი", report.packageType),
+    p("დუშთასე", report.showerTraySize),
+    p("ანტირუჩი", report.antiSlip)
   ].join("");
   const materials = [
-    p("შუშის ზომა", state.report.glassPartitionSize),
-    p("კარი", state.report.hingedDoorSize),
-    p("პანელის ფერი", state.report.panelColor),
-    p("იატაკის პანელის ფერი", state.report.floorPanelColor),
-    p("პანელი სადამდე კეთდება", state.report.panelHeight),
-    hasValue(state.report.installables) ? `<h3>დასაყენებლების სია</h3>${list(state.report.installables)}` : ""
+    p("შუშის ზომა", report.glassPartitionSize),
+    p("კარი", report.hingedDoorSize),
+    p("პანელის ფერი", report.panelColor),
+    p("იატაკის პანელის ფერი", report.floorPanelColor),
+    p("პანელი სადამდე კეთდება", report.panelHeight),
+    hasValue(report.installables) ? `<h3>დასაყენებლების სია</h3>${list(report.installables)}` : ""
   ].join("");
-  const sketchImage = window.BathroomSketch?.hasContent(state.report.sketch)
-    ? window.BathroomSketch.createImage(state.report.sketch)
+  const sketchImage = window.BathroomSketch?.hasContent(report.sketch)
+    ? window.BathroomSketch.createImage(report.sketch)
     : "";
   const sketch = sketchImage
     ? `<img class="sketch-report-image" src="${sketchImage}" alt="აბაზანის 2D ნახაზი" />`
@@ -418,8 +670,8 @@ function buildPrintableReportContent() {
       ${section("კლიენტის მონაცემები", client)}
       ${section("პაკეტი და დუშთასე", packageInfo)}
       ${section("მასალები", materials)}
-      ${section("დამატებითი სამუშაოები", list(state.report.extraWork))}
-      ${section("შენიშვნები", list(state.report.workNotes))}
+      ${section("დამატებითი სამუშაოები", list(report.extraWork))}
+      ${section("შენიშვნები", list(report.workNotes))}
       ${section("აბაზანის ნახაზი", sketch)}
     `;
 }
@@ -530,10 +782,23 @@ function bindEvents() {
   els.clearHistoryBtn?.addEventListener("click", async () => {
     await clearReports();
     await renderHistory();
+    await renderGroupsPanel();
     showAlert("ისტორია წაიშალა.", "info");
   });
   els.modeReportBtn?.addEventListener("click", () => setMode("report"));
   els.modeLoadingBtn?.addEventListener("click", () => setMode("loading"));
+  els.reportForm.addEventListener("change", () => {
+    syncReportFromForm();
+    clearAlert();
+  });
+  els.addGroupBtn?.addEventListener("click", addGroup);
+  els.newGroupInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      addGroup();
+    }
+  });
+  bindGroupsListEvents();
 }
 
 async function init() {
@@ -550,6 +815,8 @@ async function init() {
   bindEvents();
   syncFormFromReport();
   await renderHistory();
+  await loadGroups();
+  await renderGroupsPanel();
   window.LoadingMode?.init();
   restoreMode();
   registerServiceWorker();
