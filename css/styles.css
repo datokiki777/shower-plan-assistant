@@ -685,6 +685,38 @@ select:focus {
   margin-bottom: 10px;
 }
 
+.group-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: auto;
+  border: none;
+  background: transparent;
+  padding: 4px 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.group-toggle-btn:hover {
+  border-color: transparent;
+}
+
+.group-toggle-caret {
+  display: inline-block;
+  color: var(--brand);
+  font-size: 13px;
+  transition: transform 0.15s ease;
+}
+
+.group-card.is-open .group-toggle-caret {
+  transform: rotate(90deg);
+}
+
+.group-card:not(.is-open) .group-clients {
+  display: none;
+}
+
 .group-card-head strong {
   font-size: 15px;
 }

@@ -9,6 +9,7 @@ const fields = [
   "address",
   "phone",
   "googleMapsLink",
+  "jobDate",
   "groupId",
   "packageType",
   "showerTraySize",
@@ -25,7 +26,8 @@ const fields = [
 
 const state = {
   report: createEmptyReport(),
-  groups: []
+  groups: [],
+  openGroupIds: new Set()
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -90,6 +92,7 @@ function createEmptyReport() {
     address: "",
     phone: "",
     googleMapsLink: "",
+    jobDate: "",
     groupId: "",
     packageType: "",
     showerTraySize: "",
@@ -343,6 +346,37 @@ function loadClientIntoForm(report) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+function normalizeMapsLink(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  // Not a link (e.g. a pasted address) - build a tappable Google Maps search URL from it.
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(raw)}`;
+}
+
+function clientSortKey(report) {
+  const jobDate = String(report.jobDate || "").trim();
+  return jobDate || String(report.createdAt || "").slice(0, 10);
+}
+
+function sortClientsByDate(list) {
+  return list.sort((a, b) => {
+    const keyA = clientSortKey(a);
+    const keyB = clientSortKey(b);
+    if (keyA !== keyB) return keyA.localeCompare(keyB);
+    return String(a.createdAt).localeCompare(String(b.createdAt));
+  });
+}
+
+function formatJobDate(jobDate) {
+  if (!jobDate) return "";
+  const d = new Date(`${jobDate}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("ka-GE", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+const UNGROUPED_KEY = "__ungrouped__";
+
 async function renderGroupsPanel() {
   if (!els.groupsList) return;
   const [groups, reports] = await Promise.all([getGroups(), getReports()]);
@@ -354,11 +388,14 @@ async function renderGroupsPanel() {
     if (r.groupId && byGroup.has(r.groupId)) byGroup.get(r.groupId).push(r);
     else ungrouped.push(r);
   });
-  byGroup.forEach((list) => list.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt))));
-  ungrouped.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+  byGroup.forEach((list) => sortClientsByDate(list));
+  sortClientsByDate(ungrouped);
 
   const renderClientRow = (report) => {
-    const dateLabel = new Date(report.createdAt).toLocaleString("ka-GE");
+    const jobDateLabel = formatJobDate(report.jobDate);
+    const secondaryLabel = jobDateLabel
+      ? `📅 ${jobDateLabel}`
+      : `დამატებულია: ${new Date(report.createdAt).toLocaleDateString("ka-GE")}`;
     const mapsBtn = report.googleMapsLink
       ? `<button type="button" class="client-maps-btn" data-action="maps" data-id="${escapeHtml(report.id)}">📍 რუკა</button>`
       : "";
@@ -366,7 +403,7 @@ async function renderGroupsPanel() {
       <div class="client-row" data-id="${escapeHtml(report.id)}">
         <div class="client-row-info">
           <strong>${escapeHtml(report.clientName || "უსახელო კლიენტი")}</strong>
-          <small>${dateLabel}</small>
+          <small>${secondaryLabel}</small>
         </div>
         <div class="client-row-actions">
           <button type="button" data-action="load" data-id="${escapeHtml(report.id)}">ჩატვირთვა</button>
@@ -377,39 +414,39 @@ async function renderGroupsPanel() {
       </div>`;
   };
 
+  const renderGroupCard = (key, name, clients, extraHeadBtns = "") => {
+    const isOpen = state.openGroupIds.has(key);
+    return `
+      <div class="group-card${isOpen ? " is-open" : ""}" data-group-key="${escapeHtml(key)}">
+        <div class="group-card-head">
+          <button type="button" class="group-toggle-btn" data-toggle="${escapeHtml(key)}">
+            <span class="group-toggle-caret">▸</span>
+            <strong>${escapeHtml(name)}</strong>
+            <span class="group-count">${clients.length} კლიენტი</span>
+          </button>
+          ${extraHeadBtns}
+        </div>
+        <div class="group-clients"${isOpen ? "" : " hidden"}>
+          ${clients.length ? clients.map(renderClientRow).join("") : '<p class="loading-empty">კლიენტები ჯერ არ არის</p>'}
+        </div>
+      </div>`;
+  };
+
   const groupBlocks = sortedGroups
     .map((g) => {
-      const clients = byGroup.get(g.id) || [];
-      return `
-        <div class="group-card" data-group-id="${escapeHtml(g.id)}">
-          <div class="group-card-head">
-            <strong>${escapeHtml(g.name)}</strong>
-            <span class="group-count">${clients.length} კლიენტი</span>
-            <div class="group-card-actions">
-              <button type="button" data-group-action="rename" data-id="${escapeHtml(g.id)}">გადარქმევა</button>
-              <button type="button" class="danger-action" data-group-action="delete" data-id="${escapeHtml(g.id)}">წაშლა</button>
-            </div>
-          </div>
-          <div class="group-clients">
-            ${clients.length ? clients.map(renderClientRow).join("") : '<p class="loading-empty">კლიენტები ჯერ არ არის</p>'}
-          </div>
+      const actions = `
+        <div class="group-card-actions">
+          <button type="button" data-group-action="rename" data-id="${escapeHtml(g.id)}">გადარქმევა</button>
+          <button type="button" class="danger-action" data-group-action="delete" data-id="${escapeHtml(g.id)}">წაშლა</button>
         </div>`;
+      return renderGroupCard(g.id, g.name, byGroup.get(g.id) || [], actions);
     })
     .join("");
 
-  const ungroupedBlock = `
-    <div class="group-card">
-      <div class="group-card-head">
-        <strong>ჯგუფის გარეშე</strong>
-        <span class="group-count">${ungrouped.length} კლიენტი</span>
-      </div>
-      <div class="group-clients">
-        ${ungrouped.length ? ungrouped.map(renderClientRow).join("") : '<p class="loading-empty">კლიენტები არ არის</p>'}
-      </div>
-    </div>`;
+  const ungroupedBlock =
+    ungrouped.length || sortedGroups.length ? renderGroupCard(UNGROUPED_KEY, "ჯგუფის გარეშე", ungrouped) : "";
 
-  els.groupsList.innerHTML =
-    (groupBlocks || "") + (sortedGroups.length ? "" : "") + (ungrouped.length || sortedGroups.length ? ungroupedBlock : "");
+  els.groupsList.innerHTML = groupBlocks + ungroupedBlock;
 
   if (!sortedGroups.length && !ungrouped.length) {
     els.groupsList.innerHTML = '<p class="loading-empty">ჯერ არც ჯგუფი და არც კლიენტია დამატებული</p>';
@@ -418,6 +455,19 @@ async function renderGroupsPanel() {
 
 function bindGroupsListEvents() {
   els.groupsList?.addEventListener("click", async (event) => {
+    const toggleBtn = event.target.closest("[data-toggle]");
+    if (toggleBtn) {
+      const key = toggleBtn.dataset.toggle;
+      const card = toggleBtn.closest(".group-card");
+      const clientsEl = card?.querySelector(".group-clients");
+      if (!clientsEl) return;
+      const willOpen = clientsEl.hidden;
+      clientsEl.hidden = !willOpen;
+      card.classList.toggle("is-open", willOpen);
+      if (willOpen) state.openGroupIds.add(key);
+      else state.openGroupIds.delete(key);
+      return;
+    }
     const clientBtn = event.target.closest("[data-action]");
     if (clientBtn) {
       const id = clientBtn.dataset.id;
@@ -426,7 +476,7 @@ function bindGroupsListEvents() {
       if (!report) return;
       const action = clientBtn.dataset.action;
       if (action === "load") loadClientIntoForm(report);
-      else if (action === "maps") window.open(report.googleMapsLink, "_blank", "noopener");
+      else if (action === "maps") window.open(normalizeMapsLink(report.googleMapsLink), "_blank", "noopener");
       else if (action === "share") shareReport(report, clientBtn);
       else if (action === "delete") deleteClientReport(report);
       return;
@@ -465,7 +515,7 @@ async function shareReport(report, triggerBtn) {
     if (!blob) throw new Error("სურათი ვერ შეიქმნა");
     const fileName = `${(report.clientName || "client").replace(/\s+/g, "_")}.png`;
     const file = new File([blob], fileName, { type: "image/png" });
-    const shareText = report.googleMapsLink ? report.googleMapsLink : "";
+    const shareText = report.googleMapsLink ? normalizeMapsLink(report.googleMapsLink) : "";
 
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({
@@ -642,7 +692,8 @@ function buildPrintableReportContent(report = state.report) {
   const client = [
     p("კლიენტი", report.clientName),
     p("მისამართი", report.address),
-    p("ტელეფონი", report.phone)
+    p("ტელეფონი", report.phone),
+    p("სამუშაოს თარიღი", formatJobDate(report.jobDate))
   ].join("");
   const packageInfo = [
     p("პაკეტი", report.packageType),
