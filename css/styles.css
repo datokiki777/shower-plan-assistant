@@ -768,6 +768,11 @@ select:focus {
   color: var(--muted);
 }
 
+.client-row-info .client-schedule {
+  color: var(--danger);
+  font-weight: 700;
+}
+
 .client-row-actions {
   display: flex;
   flex-wrap: wrap;

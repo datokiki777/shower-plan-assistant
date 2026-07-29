@@ -413,9 +413,9 @@ async function renderGroupsPanel() {
 
   const renderClientRow = (report) => {
     const scheduleLabel = formatJobSchedule(report);
-    const secondaryLabel = scheduleLabel
-      ? `📅 ${scheduleLabel}`
-      : `დამატებულია: ${new Date(report.createdAt).toLocaleDateString("ka-GE")}`;
+    const secondaryHtml = scheduleLabel
+      ? `<small class="client-schedule">📅 ${escapeHtml(scheduleLabel)}</small>`
+      : `<small>დამატებულია: ${new Date(report.createdAt).toLocaleDateString("ka-GE")}</small>`;
     const mapsBtn = report.googleMapsLink
       ? `<button type="button" class="client-maps-btn" data-action="maps" data-id="${escapeHtml(report.id)}">📍 რუკა</button>`
       : "";
@@ -423,7 +423,7 @@ async function renderGroupsPanel() {
       <div class="client-row" data-id="${escapeHtml(report.id)}">
         <div class="client-row-info">
           <strong>${escapeHtml(report.clientName || "უსახელო კლიენტი")}</strong>
-          <small>${secondaryLabel}</small>
+          ${secondaryHtml}
         </div>
         <div class="client-row-actions">
           <button type="button" data-action="load" data-id="${escapeHtml(report.id)}">ჩატვირთვა</button>
