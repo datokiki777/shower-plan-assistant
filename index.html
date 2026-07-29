@@ -40,11 +40,14 @@
           <div id="groupsList" class="groups-list"></div>
         </section>
 
-        <div class="report-toolbar">
-          <div>
-            <p class="eyebrow">ქართული ანგარიში</p>
-            <h2 id="reportTitle">ახალი სამუშაო</h2>
-          </div>
+        <div class="report-toolbar" id="reportToolbar">
+          <button type="button" class="report-toggle-btn" id="reportToggleBtn">
+            <span class="report-toggle-caret">▸</span>
+            <div>
+              <p class="eyebrow">ქართული ანგარიში</p>
+              <h2 id="reportTitle">ახალი სამუშაო</h2>
+            </div>
+          </button>
           <div class="toolbar-actions">
             <button type="button" id="clearBtn">გასუფთავება</button>
             <button type="button" id="saveBtn">შენახვა</button>
@@ -52,6 +55,7 @@
           </div>
         </div>
 
+        <div id="reportBody" hidden>
         <div class="alert" id="alertBox" hidden></div>
 
         <form id="reportForm" class="report-grid">
@@ -131,6 +135,7 @@
           </div>
           <div id="historyList" class="history-list"></div>
         </section>
+        </div>
       </section>
     </section>
 

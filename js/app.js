@@ -54,10 +54,19 @@ const els = {
   groupSelect: $("#groupSelect"),
   newGroupInput: $("#newGroupInput"),
   addGroupBtn: $("#addGroupBtn"),
-  groupsList: $("#groupsList")
+  groupsList: $("#groupsList"),
+  reportToolbar: $("#reportToolbar"),
+  reportToggleBtn: $("#reportToggleBtn"),
+  reportBody: $("#reportBody")
 };
 
 const MODE_STORAGE_KEY = "shower-plan-assistant-mode";
+
+function setReportBodyOpen(open) {
+  if (!els.reportBody || !els.reportToolbar) return;
+  els.reportBody.hidden = !open;
+  els.reportToolbar.classList.toggle("is-open", open);
+}
 
 function setMode(mode, persist = true) {
   const isLoading = mode === "loading";
@@ -354,6 +363,7 @@ function loadClientIntoForm(report) {
   state.report = normalizeReport(report);
   syncFormFromReport();
   renderGroupSelectOptions();
+  setReportBodyOpen(true);
   showAlert("კლიენტი ჩაიტვირთა ფორმაში.", "info");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -860,6 +870,9 @@ function bindEvents() {
     clearAlert();
   });
   els.addGroupBtn?.addEventListener("click", addGroup);
+  els.reportToggleBtn?.addEventListener("click", () => {
+    setReportBodyOpen(els.reportBody?.hidden !== false);
+  });
   els.newGroupInput?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();

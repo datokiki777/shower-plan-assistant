@@ -176,6 +176,34 @@ button:disabled { opacity: 0.55; cursor: wait; }
   margin-bottom: 14px;
 }
 
+.report-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  min-height: auto;
+  text-align: left;
+  cursor: pointer;
+}
+
+.report-toggle-btn:hover {
+  border-color: transparent;
+}
+
+.report-toggle-caret {
+  display: inline-block;
+  flex: 0 0 auto;
+  color: var(--brand);
+  font-size: 16px;
+  transition: transform 0.15s ease;
+}
+
+.report-toolbar.is-open .report-toggle-caret {
+  transform: rotate(90deg);
+}
+
 .toolbar-actions { flex-wrap: wrap; justify-content: flex-end; }
 
 .alert {
