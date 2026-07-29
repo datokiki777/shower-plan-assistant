@@ -63,12 +63,24 @@
             <label>Google Maps ლინკი <input name="googleMapsLink" type="url" placeholder="https://maps.google.com/..." /></label>
             <div class="two-col">
               <label>სამუშაოს თარიღი <input name="jobDate" type="date" /></label>
-              <label>ჯგუფი
-                <select name="groupId" id="groupSelect">
-                  <option value="">— ჯგუფის გარეშე —</option>
+              <label>ხანგრძლივობა
+                <select name="jobDurationDays">
+                  <option value="">—</option>
+                  <option value="1">1 დღიანი</option>
+                  <option value="2">2 დღიანი</option>
+                  <option value="3">3 დღიანი</option>
+                  <option value="4">4 დღიანი</option>
+                  <option value="5">5 დღიანი</option>
+                  <option value="6">6 დღიანი</option>
+                  <option value="7">7 დღიანი</option>
                 </select>
               </label>
             </div>
+            <label>ჯგუფი
+              <select name="groupId" id="groupSelect">
+                <option value="">— ჯგუფის გარეშე —</option>
+              </select>
+            </label>
           </section>
 
           <section class="form-card">
@@ -132,6 +144,7 @@
           <div class="toolbar-actions">
             <button type="button" id="loadingClearBtn">გასუფთავება</button>
             <button type="button" id="loadingSaveBtn">შენახვა</button>
+            <button type="button" id="loadingShareBtn">გაზიარება</button>
             <button class="primary" type="button" id="loadingExportBtn">PDF export</button>
           </div>
         </div>

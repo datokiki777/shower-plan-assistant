@@ -341,6 +341,56 @@
     }, 250);
   }
 
+  async function generateLoadingImageBlob() {
+    if (!window.html2canvas) throw new Error("html2canvas ვერ ჩაიტვირთა");
+    const wrapper = document.createElement("div");
+    wrapper.className = "printable-report share-capture";
+    wrapper.innerHTML = buildPrintableLoadingContent();
+    document.body.appendChild(wrapper);
+    await new Promise((resolve) => window.setTimeout(resolve, 60));
+    try {
+      const canvas = await window.html2canvas(wrapper, { backgroundColor: "#ffffff", scale: 2, useCORS: true });
+      return await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    } finally {
+      wrapper.remove();
+    }
+  }
+
+  async function shareLoading() {
+    clearAlert();
+    if (!hasAnyContent(state.loading)) {
+      showAlert("სია ცარიელია, დაამატე მინიმუმ ერთი ჩანაწერი გაზიარებამდე.", "warn");
+      return;
+    }
+    if (els.shareBtn) els.shareBtn.disabled = true;
+    try {
+      const blob = await generateLoadingImageBlob();
+      if (!blob) throw new Error("სურათი ვერ შეიქმნა");
+      const fileName = `${(state.loading.title || "datvirtvis-sia").replace(/\s+/g, "_")}.png`;
+      const file = new File([blob], fileName, { type: "image/png" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: state.loading.title || "დატვირთვის სია" });
+        showAlert("გაზიარება გაიხსნა.", "ok");
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showAlert("სურათი ჩამოიტვირთა. ეს მოწყობილობა/ბრაუზერი პირდაპირ გაზიარებას ვერ უჭერს მხარს.", "warn");
+    } catch (error) {
+      if (error?.name !== "AbortError") showAlert("გაზიარება ვერ განხორციელდა, სცადე თავიდან.", "warn");
+    } finally {
+      if (els.shareBtn) els.shareBtn.disabled = false;
+    }
+  }
+
   // ---- Events ----
 
   function bindEvents() {
@@ -375,6 +425,7 @@
 
     els.saveBtn.addEventListener("click", saveCurrentLoading);
     els.exportBtn.addEventListener("click", exportLoadingPdf);
+    els.shareBtn?.addEventListener("click", shareLoading);
 
     els.clearHistoryBtn?.addEventListener("click", async () => {
       await window.AppDB.clearRecords(window.AppDB.LOADING_STORE);
@@ -395,6 +446,7 @@
     els.clearBtn = $("#loadingClearBtn");
     els.saveBtn = $("#loadingSaveBtn");
     els.exportBtn = $("#loadingExportBtn");
+    els.shareBtn = $("#loadingShareBtn");
     els.clearHistoryBtn = $("#loadingClearHistoryBtn");
     els.historyList = $("#loadingHistoryList");
     els.alertBox = $("#loadingAlertBox");

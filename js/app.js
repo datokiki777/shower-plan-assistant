@@ -10,6 +10,7 @@ const fields = [
   "phone",
   "googleMapsLink",
   "jobDate",
+  "jobDurationDays",
   "groupId",
   "packageType",
   "showerTraySize",
@@ -93,6 +94,7 @@ function createEmptyReport() {
     phone: "",
     googleMapsLink: "",
     jobDate: "",
+    jobDurationDays: "",
     groupId: "",
     packageType: "",
     showerTraySize: "",
@@ -375,6 +377,19 @@ function formatJobDate(jobDate) {
   return d.toLocaleDateString("ka-GE", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function formatDuration(days) {
+  const n = parseInt(days, 10);
+  if (!n || n < 1) return "";
+  return `${n} დღიანი`;
+}
+
+function formatJobSchedule(report) {
+  const dateLabel = formatJobDate(report.jobDate);
+  const durationLabel = formatDuration(report.jobDurationDays);
+  if (dateLabel && durationLabel) return `${dateLabel} · ${durationLabel}`;
+  return dateLabel || durationLabel || "";
+}
+
 const UNGROUPED_KEY = "__ungrouped__";
 
 async function renderGroupsPanel() {
@@ -392,9 +407,9 @@ async function renderGroupsPanel() {
   sortClientsByDate(ungrouped);
 
   const renderClientRow = (report) => {
-    const jobDateLabel = formatJobDate(report.jobDate);
-    const secondaryLabel = jobDateLabel
-      ? `📅 ${jobDateLabel}`
+    const scheduleLabel = formatJobSchedule(report);
+    const secondaryLabel = scheduleLabel
+      ? `📅 ${scheduleLabel}`
       : `დამატებულია: ${new Date(report.createdAt).toLocaleDateString("ka-GE")}`;
     const mapsBtn = report.googleMapsLink
       ? `<button type="button" class="client-maps-btn" data-action="maps" data-id="${escapeHtml(report.id)}">📍 რუკა</button>`
@@ -693,7 +708,7 @@ function buildPrintableReportContent(report = state.report) {
     p("კლიენტი", report.clientName),
     p("მისამართი", report.address),
     p("ტელეფონი", report.phone),
-    p("სამუშაოს თარიღი", formatJobDate(report.jobDate))
+    p("სამუშაოს თარიღი", formatJobSchedule(report))
   ].join("");
   const packageInfo = [
     p("პაკეტი", report.packageType),

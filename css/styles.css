@@ -741,6 +741,10 @@ select:focus {
 .group-clients {
   display: grid;
   gap: 8px;
+  max-height: 55vh;
+  overflow-y: auto;
+  padding-right: 2px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .client-row {
