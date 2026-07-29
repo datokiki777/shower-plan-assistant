@@ -245,6 +245,14 @@ window.AppDB = { putRecord, getRecords, clearRecords, deleteRecord, LOADING_STOR
 
 async function saveCurrentReport(showMessage = true) {
   syncReportFromForm();
+  if (!state.report.groupId) {
+    if (!state.groups.length) {
+      showAlert("ჯერ ჯგუფი შექმენი (ზემოთ „+ ჯგუფი“), მერე შეინახავ კლიენტს.", "warn");
+    } else {
+      showAlert("აირჩიე ჯგუფი კლიენტისთვის შენახვამდე.", "warn");
+    }
+    return;
+  }
   state.report.createdAt = new Date().toISOString();
   await putReport(state.report);
   await renderHistory();
@@ -284,7 +292,7 @@ function renderGroupSelectOptions() {
   const current = state.report.groupId || "";
   const sorted = [...state.groups].sort((a, b) => String(a.name).localeCompare(String(b.name), "ka"));
   els.groupSelect.innerHTML =
-    '<option value="">— ჯგუფის გარეშე —</option>' +
+    '<option value="" disabled>— აირჩიე ჯგუფი —</option>' +
     sorted.map((g) => `<option value="${escapeHtml(g.id)}">${escapeHtml(g.name)}</option>`).join("");
   els.groupSelect.value = current;
 }
@@ -314,17 +322,19 @@ async function renameGroupPrompt(group) {
 }
 
 async function removeGroup(group) {
-  const clientCount = (await getReports()).filter((r) => r.groupId === group.id).length;
-  const message = clientCount
-    ? `ჯგუფი „${group.name}“ შეიცავს ${clientCount} კლიენტს. წაშლის შემდეგ კლიენტები დარჩება „ჯგუფის გარეშე“ სიაში. წავშალო?`
+  const clientsInGroup = (await getReports()).filter((r) => r.groupId === group.id);
+  const message = clientsInGroup.length
+    ? `ჯგუფი „${group.name}“ შეიცავს ${clientsInGroup.length} კლიენტს. ჯგუფის წაშლა წაშლის ამ კლიენტებსაც. დარწმუნებული ხარ?`
     : `წავშალო ჯგუფი „${group.name}“?`;
   if (!window.confirm(message)) return;
+  await Promise.all(clientsInGroup.map((r) => deleteRecord(STORE, r.id)));
   await deleteGroup(group.id);
   await loadGroups();
   if (state.report.groupId === group.id) {
     state.report.groupId = "";
     renderGroupSelectOptions();
   }
+  await renderHistory();
   await renderGroupsPanel();
 }
 
@@ -390,21 +400,16 @@ function formatJobSchedule(report) {
   return dateLabel || durationLabel || "";
 }
 
-const UNGROUPED_KEY = "__ungrouped__";
-
 async function renderGroupsPanel() {
   if (!els.groupsList) return;
   const [groups, reports] = await Promise.all([getGroups(), getReports()]);
   state.groups = groups;
   const sortedGroups = [...groups].sort((a, b) => String(a.name).localeCompare(String(b.name), "ka"));
   const byGroup = new Map(sortedGroups.map((g) => [g.id, []]));
-  const ungrouped = [];
   reports.forEach((r) => {
     if (r.groupId && byGroup.has(r.groupId)) byGroup.get(r.groupId).push(r);
-    else ungrouped.push(r);
   });
   byGroup.forEach((list) => sortClientsByDate(list));
-  sortClientsByDate(ungrouped);
 
   const renderClientRow = (report) => {
     const scheduleLabel = formatJobSchedule(report);
@@ -458,13 +463,10 @@ async function renderGroupsPanel() {
     })
     .join("");
 
-  const ungroupedBlock =
-    ungrouped.length || sortedGroups.length ? renderGroupCard(UNGROUPED_KEY, "ჯგუფის გარეშე", ungrouped) : "";
+  els.groupsList.innerHTML = groupBlocks;
 
-  els.groupsList.innerHTML = groupBlocks + ungroupedBlock;
-
-  if (!sortedGroups.length && !ungrouped.length) {
-    els.groupsList.innerHTML = '<p class="loading-empty">ჯერ არც ჯგუფი და არც კლიენტია დამატებული</p>';
+  if (!sortedGroups.length) {
+    els.groupsList.innerHTML = '<p class="loading-empty">ჯერ არცერთი ჯგუფი არ არის დამატებული — შექმენი ჯგუფი ზემოთ</p>';
   }
 }
 

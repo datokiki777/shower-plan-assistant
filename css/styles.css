@@ -908,14 +908,37 @@ select:focus {
 @media (max-width: 640px) {
   .app-shell { padding: 14px; }
 
-  .topbar,
-  .report-toolbar {
+  .topbar {
     align-items: stretch;
     flex-direction: column;
   }
 
+  .report-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+  }
+
+  .report-toolbar .eyebrow {
+    margin-bottom: 2px;
+  }
+
+  .report-toolbar h2 {
+    font-size: 19px;
+  }
+
+  .toolbar-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+    gap: 8px;
+  }
+
   .toolbar-actions button {
-    flex: 1 1 140px;
+    min-height: 40px;
+    padding: 0 6px;
+    font-size: 12.5px;
   }
 
   .two-col,
