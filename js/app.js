@@ -1,9 +1,33 @@
 const DB_NAME = "shower-plan-assistant";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const STORE = "reports";
 const LOADING_STORE = "loadingLists";
 const GROUP_STORE = "groups";
 const PERIODS_STORE = "periodsWorkers";
+const TEMPLATE_STORE = "fieldTemplates";
+const TEMPLATE_FIELDS = [
+  "packageType",
+  "antiSlip",
+  "showerTraySize",
+  "glassPartitionSize",
+  "hingedDoorSize",
+  "panelColor",
+  "floorPanelColor",
+  "panelHeight",
+  "installables"
+];
+const TEMPLATE_FIELD_LABELS = {
+  packageType: "პაკეტი",
+  antiSlip: "ანტირუჩი",
+  showerTraySize: "დუშთასეს ზომა",
+  glassPartitionSize: "შუშის ზომა",
+  hingedDoorSize: "კარი",
+  panelColor: "პანელის ფერი",
+  floorPanelColor: "იატაკის პანელის ფერი",
+  panelHeight: "პანელი სადამდე კეთდება",
+  installables: "დასაყენებლების სია"
+};
+const TEMPLATE_APPEND_FIELDS = new Set(["glassPartitionSize", "installables"]);
 
 const fields = [
   "clientName",
@@ -30,7 +54,8 @@ const state = {
   report: createEmptyReport(),
   groups: [],
   openGroupIds: new Set(),
-  openHistoryGroupIds: new Set()
+  openHistoryGroupIds: new Set(),
+  templates: {}
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -61,7 +86,11 @@ const els = {
   groupsList: $("#groupsList"),
   reportToolbar: $("#reportToolbar"),
   reportToggleBtn: $("#reportToggleBtn"),
-  reportBody: $("#reportBody")
+  reportBody: $("#reportBody"),
+  templatesToolbar: $("#templatesToolbar"),
+  templatesToggleBtn: $("#templatesToggleBtn"),
+  templatesBody: $("#templatesBody"),
+  templatesFieldsList: $("#templatesFieldsList")
 };
 
 const MODE_STORAGE_KEY = "shower-plan-assistant-mode";
@@ -70,6 +99,15 @@ function setReportBodyOpen(open) {
   if (!els.reportBody || !els.reportToolbar) return;
   els.reportBody.hidden = !open;
   els.reportToolbar.classList.toggle("is-open", open);
+}
+
+function bindSimpleToggle(toggleBtn, toolbar, body) {
+  if (!toggleBtn || !toolbar || !body) return;
+  toggleBtn.addEventListener("click", () => {
+    const willOpen = body.hidden;
+    body.hidden = !willOpen;
+    toolbar.classList.toggle("is-open", willOpen);
+  });
 }
 
 function setMode(mode, persist = true) {
@@ -208,6 +246,7 @@ function openDb() {
       if (!db.objectStoreNames.contains(LOADING_STORE)) db.createObjectStore(LOADING_STORE, { keyPath: "id" });
       if (!db.objectStoreNames.contains(GROUP_STORE)) db.createObjectStore(GROUP_STORE, { keyPath: "id" });
       if (!db.objectStoreNames.contains(PERIODS_STORE)) db.createObjectStore(PERIODS_STORE, { keyPath: "id" });
+      if (!db.objectStoreNames.contains(TEMPLATE_STORE)) db.createObjectStore(TEMPLATE_STORE, { keyPath: "id" });
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => {
@@ -265,6 +304,25 @@ const clearReports = () => clearRecords(STORE);
 const putGroup = (group) => putRecord(GROUP_STORE, group);
 const getGroups = () => getRecords(GROUP_STORE);
 const deleteGroup = (id) => deleteRecord(GROUP_STORE, id);
+
+function defaultTemplates() {
+  const obj = {};
+  TEMPLATE_FIELDS.forEach((f) => (obj[f] = []));
+  return obj;
+}
+
+async function loadTemplates() {
+  const records = await getRecords(TEMPLATE_STORE);
+  const record = records[0];
+  state.templates = { ...defaultTemplates(), ...(record || {}) };
+  renderTemplateDatalists();
+  renderTemplateChipRows();
+  renderTemplatesPanel();
+}
+
+async function saveTemplates() {
+  await putRecord(TEMPLATE_STORE, { id: "main", createdAt: new Date().toISOString(), ...state.templates });
+}
 
 window.AppDB = { putRecord, getRecords, clearRecords, deleteRecord, LOADING_STORE, PERIODS_STORE };
 
@@ -330,6 +388,127 @@ function renderGroupSelectOptions() {
     sorted.map((g) => `<option value="${escapeHtml(g.id)}">${escapeHtml(g.name)}</option>`).join("");
   els.groupSelect.value = current;
 }
+
+function renderTemplateDatalists() {
+  TEMPLATE_FIELDS.forEach((field) => {
+    if (TEMPLATE_APPEND_FIELDS.has(field)) return; // these use chip-rows instead, not <datalist>
+    const list = document.getElementById(`${field}Templates`);
+    if (!list) return;
+    const values = state.templates[field] || [];
+    list.innerHTML = values.map((v) => `<option value="${escapeHtml(v)}"></option>`).join("");
+  });
+}
+
+function appendToTextareaField(fieldName, value) {
+  const input = els.reportForm.elements[fieldName];
+  if (!input) return;
+  const current = input.value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (!current.includes(value)) current.push(value);
+  input.value = current.join("\n");
+  syncReportFromForm();
+  clearAlert();
+}
+
+function renderTemplateChipRows() {
+  TEMPLATE_APPEND_FIELDS.forEach((field) => {
+    const row = document.querySelector(`.template-chip-row[data-chip-field="${field}"]`);
+    if (!row) return;
+    const values = state.templates[field] || [];
+    row.innerHTML = values
+      .map((v) => `<button type="button" class="template-insert-chip" data-insert-field="${field}" data-insert-value="${escapeHtml(v)}">+ ${escapeHtml(v)}</button>`)
+      .join("");
+  });
+}
+
+function bindTemplateChipRowEvents() {
+  document.querySelectorAll(".template-chip-row").forEach((row) => {
+    row.addEventListener("click", (event) => {
+      const chip = event.target.closest("[data-insert-field]");
+      if (!chip) return;
+      appendToTextareaField(chip.dataset.insertField, chip.dataset.insertValue);
+    });
+  });
+}
+
+function renderTemplatesPanel() {
+  if (!els.templatesFieldsList) return;
+  els.templatesFieldsList.innerHTML = TEMPLATE_FIELDS.map((field) => {
+    const values = state.templates[field] || [];
+    const chips = values.length
+      ? values
+          .map(
+            (v) => `
+        <span class="template-chip">
+          ${escapeHtml(v)}
+          <button type="button" data-remove-template-field="${field}" data-remove-template-value="${escapeHtml(v)}" aria-label="წაშლა">×</button>
+        </span>`
+          )
+          .join("")
+      : '<span class="loading-empty">შაბლონები ჯერ არ არის</span>';
+    return `
+      <div class="group-card">
+        <div class="group-card-head">
+          <strong>${escapeHtml(TEMPLATE_FIELD_LABELS[field] || field)}</strong>
+          <span class="group-count">${values.length} შაბლონი</span>
+        </div>
+        <div class="template-chip-list">${chips}</div>
+        <div class="add-group-row">
+          <input type="text" data-template-add-input="${field}" placeholder="ახალი შაბლონის დამატება" />
+          <button type="button" data-template-add-btn="${field}">+ დამატება</button>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+async function addTemplateValue(field, rawValue) {
+  const value = String(rawValue || "").trim();
+  if (!value) return;
+  const list = state.templates[field] || (state.templates[field] = []);
+  if (list.includes(value)) {
+    showAlert("ეს შაბლონი უკვე დამატებულია.", "warn");
+    return;
+  }
+  list.push(value);
+  await saveTemplates();
+  renderTemplateDatalists();
+  renderTemplateChipRows();
+  renderTemplatesPanel();
+}
+
+async function removeTemplateValue(field, value) {
+  state.templates[field] = (state.templates[field] || []).filter((v) => v !== value);
+  await saveTemplates();
+  renderTemplateDatalists();
+  renderTemplateChipRows();
+  renderTemplatesPanel();
+}
+
+function bindTemplatesPanelEvents() {
+  els.templatesFieldsList?.addEventListener("click", (event) => {
+    const addBtn = event.target.closest("[data-template-add-btn]");
+    if (addBtn) {
+      const field = addBtn.dataset.templateAddBtn;
+      const input = els.templatesFieldsList.querySelector(`[data-template-add-input="${field}"]`);
+      addTemplateValue(field, input?.value);
+      if (input) input.value = "";
+      return;
+    }
+    const removeBtn = event.target.closest("[data-remove-template-field]");
+    if (removeBtn) {
+      removeTemplateValue(removeBtn.dataset.removeTemplateField, removeBtn.dataset.removeTemplateValue);
+    }
+  });
+  els.templatesFieldsList?.addEventListener("keydown", (event) => {
+    const input = event.target.closest("[data-template-add-input]");
+    if (input && event.key === "Enter") {
+      event.preventDefault();
+      const field = input.dataset.templateAddInput;
+      addTemplateValue(field, input.value);
+      input.value = "";
+    }
+  });
+}
+
 
 async function addGroup() {
   const name = (els.newGroupInput?.value || "").trim();
@@ -995,6 +1174,9 @@ function bindEvents() {
     }
   });
   bindGroupsListEvents();
+  bindSimpleToggle(els.templatesToggleBtn, els.templatesToolbar, els.templatesBody);
+  bindTemplateChipRowEvents();
+  bindTemplatesPanelEvents();
 }
 
 async function init() {
@@ -1013,6 +1195,7 @@ async function init() {
   await renderHistory();
   await loadGroups();
   await renderGroupsPanel();
+  await loadTemplates();
   window.LoadingMode?.init();
   window.PeriodsMode?.init();
   restoreMode();

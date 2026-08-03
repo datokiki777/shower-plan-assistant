@@ -42,6 +42,22 @@
           <div id="groupsList" class="groups-list"></div>
         </section>
 
+        <section class="history templates-panel">
+          <div class="report-toolbar" id="templatesToolbar">
+            <button type="button" class="report-toggle-btn" id="templatesToggleBtn">
+              <span class="report-toggle-caret">▸</span>
+              <span>
+                <p class="eyebrow">სწრაფი შევსება</p>
+                <h2>შაბლონები</h2>
+              </span>
+            </button>
+          </div>
+          <div id="templatesBody" hidden>
+            <p class="templates-hint">დაამატე ან წაშალე მზა ვარიანტები — შევსებისას ველზე დაწერის დაწყებისთანავე შემოგთავაზებს, ან „შუშის ზომა“/„დასაყენებლების სია“-ში პირდაპირ თეგზე დაჭერით ჩაემატება.</p>
+            <div id="templatesFieldsList" class="groups-list"></div>
+          </div>
+        </section>
+
         <div class="report-toolbar" id="reportToolbar">
           <button type="button" class="report-toggle-btn" id="reportToggleBtn">
             <span class="report-toggle-caret">▸</span>
@@ -92,22 +108,47 @@
           <section class="form-card">
             <h3>პაკეტი და დუშთასე</h3>
             <div class="two-col">
-              <label>პაკეტი S/M <input name="packageType" /></label>
-              <label>ანტირუჩი <input name="antiSlip" /></label>
+              <label>პაკეტი S/M
+                <input name="packageType" list="packageTypeTemplates" autocomplete="off" />
+                <datalist id="packageTypeTemplates"></datalist>
+              </label>
+              <label>ანტირუჩი
+                <input name="antiSlip" list="antiSlipTemplates" autocomplete="off" />
+                <datalist id="antiSlipTemplates"></datalist>
+              </label>
             </div>
-            <label>დუშთასეს ზომა <input name="showerTraySize" /></label>
+            <label>დუშთასეს ზომა
+              <input name="showerTraySize" list="showerTraySizeTemplates" autocomplete="off" />
+              <datalist id="showerTraySizeTemplates"></datalist>
+            </label>
           </section>
 
           <section class="form-card">
             <h3>მასალები</h3>
             <div class="two-col">
-              <label>შუშის ზომა <input name="glassPartitionSize" /></label>
-              <label>კარი <input name="hingedDoorSize" /></label>
+              <label>შუშის ზომა
+                <textarea name="glassPartitionSize" rows="2"></textarea>
+              </label>
+              <label>კარი
+                <input name="hingedDoorSize" list="hingedDoorSizeTemplates" autocomplete="off" />
+                <datalist id="hingedDoorSizeTemplates"></datalist>
+              </label>
             </div>
-            <label>პანელის ფერი <input name="panelColor" /></label>
-            <label>იატაკის პანელის ფერი <input name="floorPanelColor" /></label>
-            <label>პანელი სადამდე კეთდება <input name="panelHeight" /></label>
+            <div class="template-chip-row" data-chip-field="glassPartitionSize"></div>
+            <label>პანელის ფერი
+              <input name="panelColor" list="panelColorTemplates" autocomplete="off" />
+              <datalist id="panelColorTemplates"></datalist>
+            </label>
+            <label>იატაკის პანელის ფერი
+              <input name="floorPanelColor" list="floorPanelColorTemplates" autocomplete="off" />
+              <datalist id="floorPanelColorTemplates"></datalist>
+            </label>
+            <label>პანელი სადამდე კეთდება
+              <input name="panelHeight" list="panelHeightTemplates" autocomplete="off" />
+              <datalist id="panelHeightTemplates"></datalist>
+            </label>
             <label>დასაყენებლების სია <textarea name="installables" rows="4"></textarea></label>
+            <div class="template-chip-row" data-chip-field="installables"></div>
           </section>
 
           <section class="form-card">

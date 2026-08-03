@@ -965,6 +965,81 @@ select:focus {
   gap: 12px;
 }
 
+.templates-panel .report-toolbar {
+  margin-bottom: 0;
+}
+
+.templates-panel #templatesBody {
+  padding-top: 14px;
+}
+
+.templates-hint {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.template-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -6px 0 12px;
+}
+
+.template-chip-row:empty {
+  margin: 0;
+}
+
+.template-insert-chip {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+  border-radius: 999px;
+  background: var(--soft);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.template-insert-chip:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.template-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.template-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  padding: 5px 6px 5px 12px;
+  font-size: 12.5px;
+}
+
+.template-chip button {
+  border: none;
+  background: transparent;
+  min-height: auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: var(--danger);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.template-chip button:hover {
+  border-color: transparent;
+}
+
 .group-card {
   border: 1px solid var(--line);
   border-radius: 8px;
