@@ -397,6 +397,15 @@ function appendToTextareaField(fieldName, value) {
   clearAlert();
 }
 
+function removeFromTextareaField(fieldName, value) {
+  const input = els.reportForm.elements[fieldName];
+  if (!input) return;
+  const current = input.value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  input.value = current.filter((line) => line !== value).join("\n");
+  syncReportFromForm();
+  clearAlert();
+}
+
 function openTemplatePicker(field) {
   const dialog = document.getElementById("templatePickerDialog");
   const titleEl = document.getElementById("templatePickerTitle");
@@ -406,22 +415,35 @@ function openTemplatePicker(field) {
   const isAppend = TEMPLATE_APPEND_FIELDS.has(field);
   titleEl.textContent = TEMPLATE_FIELD_LABELS[field] || "შაბლონები";
   hintEl.textContent = isAppend
-    ? "დააჭირე ერთს ან რამდენიმეს — ყოველი ემატება ახალ ხაზად. დაასრულებ როცა დახურავ."
+    ? "დააჭირე ერთს ან რამდენიმეს — ემატება ახალ ხაზად. კიდევ ერთხელ დააჭირე იმავეს რომ ამოშალო."
     : "აირჩიე შაბლონი — ჩაიწერება ველში, შემდეგ თუ გინდა შეგიძლია თავად გადააკეთო.";
   const values = state.templates[field] || [];
+  const currentLines = isAppend
+    ? String(els.reportForm.elements[field]?.value || "")
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+    : [];
   listEl.dataset.field = field;
   listEl.innerHTML = values.length
     ? values
-        .map((v) => `<button type="button" class="template-picker-option" data-value="${escapeHtml(v)}">${escapeHtml(v)}</button>`)
+        .map((v) => {
+          const picked = currentLines.includes(v);
+          return `<button type="button" class="template-picker-option${picked ? " is-picked" : ""}" data-value="${escapeHtml(v)}">${escapeHtml(v)}</button>`;
+        })
         .join("")
     : '<p class="loading-empty">შაბლონები ჯერ არ არის დამატებული — დაამატე „შაბლონები“ პანელში ზემოთ</p>';
-  dialog.showModal();
+  if (typeof dialog.showModal === "function") {
+    if (dialog.open) dialog.close();
+    dialog.showModal();
+  }
 }
 
 function bindTemplatePickerEvents() {
   document.querySelectorAll(".template-picker-btn").forEach((btn) => {
     btn.addEventListener("click", () => openTemplatePicker(btn.dataset.templateField));
   });
+  const dialog = document.getElementById("templatePickerDialog");
   const listEl = document.getElementById("templatePickerList");
   listEl?.addEventListener("click", (event) => {
     const option = event.target.closest(".template-picker-option");
@@ -429,8 +451,13 @@ function bindTemplatePickerEvents() {
     const field = listEl.dataset.field;
     const value = option.dataset.value;
     if (TEMPLATE_APPEND_FIELDS.has(field)) {
-      appendToTextareaField(field, value);
-      option.classList.add("is-picked");
+      if (option.classList.contains("is-picked")) {
+        removeFromTextareaField(field, value);
+        option.classList.remove("is-picked");
+      } else {
+        appendToTextareaField(field, value);
+        option.classList.add("is-picked");
+      }
     } else {
       const input = els.reportForm.elements[field];
       if (input) {
@@ -438,11 +465,15 @@ function bindTemplatePickerEvents() {
         syncReportFromForm();
         clearAlert();
       }
-      document.getElementById("templatePickerDialog")?.close();
+      dialog?.close();
     }
   });
   document.getElementById("templatePickerCloseBtn")?.addEventListener("click", () => {
-    document.getElementById("templatePickerDialog")?.close();
+    dialog?.close();
+  });
+  // Tapping the backdrop (outside the dialog's content box) closes it too.
+  dialog?.addEventListener("click", (event) => {
+    if (event.target === dialog) dialog.close();
   });
 }
 

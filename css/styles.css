@@ -1012,6 +1012,12 @@ select:focus {
 
 .template-picker-dialog .confirm-dialog-body {
   overflow-y: auto;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.template-picker-dialog .confirm-dialog-actions {
+  flex: 0 0 auto;
 }
 
 .template-picker-list {
