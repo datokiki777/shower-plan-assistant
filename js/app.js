@@ -315,8 +315,6 @@ async function loadTemplates() {
   const records = await getRecords(TEMPLATE_STORE);
   const record = records[0];
   state.templates = { ...defaultTemplates(), ...(record || {}) };
-  renderTemplateDatalists();
-  renderTemplateChipRows();
   renderTemplatesPanel();
 }
 
@@ -389,16 +387,6 @@ function renderGroupSelectOptions() {
   els.groupSelect.value = current;
 }
 
-function renderTemplateDatalists() {
-  TEMPLATE_FIELDS.forEach((field) => {
-    if (TEMPLATE_APPEND_FIELDS.has(field)) return; // these use chip-rows instead, not <datalist>
-    const list = document.getElementById(`${field}Templates`);
-    if (!list) return;
-    const values = state.templates[field] || [];
-    list.innerHTML = values.map((v) => `<option value="${escapeHtml(v)}"></option>`).join("");
-  });
-}
-
 function appendToTextareaField(fieldName, value) {
   const input = els.reportForm.elements[fieldName];
   if (!input) return;
@@ -409,24 +397,52 @@ function appendToTextareaField(fieldName, value) {
   clearAlert();
 }
 
-function renderTemplateChipRows() {
-  TEMPLATE_APPEND_FIELDS.forEach((field) => {
-    const row = document.querySelector(`.template-chip-row[data-chip-field="${field}"]`);
-    if (!row) return;
-    const values = state.templates[field] || [];
-    row.innerHTML = values
-      .map((v) => `<button type="button" class="template-insert-chip" data-insert-field="${field}" data-insert-value="${escapeHtml(v)}">+ ${escapeHtml(v)}</button>`)
-      .join("");
-  });
+function openTemplatePicker(field) {
+  const dialog = document.getElementById("templatePickerDialog");
+  const titleEl = document.getElementById("templatePickerTitle");
+  const hintEl = document.getElementById("templatePickerHint");
+  const listEl = document.getElementById("templatePickerList");
+  if (!dialog || !titleEl || !hintEl || !listEl) return;
+  const isAppend = TEMPLATE_APPEND_FIELDS.has(field);
+  titleEl.textContent = TEMPLATE_FIELD_LABELS[field] || "შაბლონები";
+  hintEl.textContent = isAppend
+    ? "დააჭირე ერთს ან რამდენიმეს — ყოველი ემატება ახალ ხაზად. დაასრულებ როცა დახურავ."
+    : "აირჩიე შაბლონი — ჩაიწერება ველში, შემდეგ თუ გინდა შეგიძლია თავად გადააკეთო.";
+  const values = state.templates[field] || [];
+  listEl.dataset.field = field;
+  listEl.innerHTML = values.length
+    ? values
+        .map((v) => `<button type="button" class="template-picker-option" data-value="${escapeHtml(v)}">${escapeHtml(v)}</button>`)
+        .join("")
+    : '<p class="loading-empty">შაბლონები ჯერ არ არის დამატებული — დაამატე „შაბლონები“ პანელში ზემოთ</p>';
+  dialog.showModal();
 }
 
-function bindTemplateChipRowEvents() {
-  document.querySelectorAll(".template-chip-row").forEach((row) => {
-    row.addEventListener("click", (event) => {
-      const chip = event.target.closest("[data-insert-field]");
-      if (!chip) return;
-      appendToTextareaField(chip.dataset.insertField, chip.dataset.insertValue);
-    });
+function bindTemplatePickerEvents() {
+  document.querySelectorAll(".template-picker-btn").forEach((btn) => {
+    btn.addEventListener("click", () => openTemplatePicker(btn.dataset.templateField));
+  });
+  const listEl = document.getElementById("templatePickerList");
+  listEl?.addEventListener("click", (event) => {
+    const option = event.target.closest(".template-picker-option");
+    if (!option) return;
+    const field = listEl.dataset.field;
+    const value = option.dataset.value;
+    if (TEMPLATE_APPEND_FIELDS.has(field)) {
+      appendToTextareaField(field, value);
+      option.classList.add("is-picked");
+    } else {
+      const input = els.reportForm.elements[field];
+      if (input) {
+        input.value = value;
+        syncReportFromForm();
+        clearAlert();
+      }
+      document.getElementById("templatePickerDialog")?.close();
+    }
+  });
+  document.getElementById("templatePickerCloseBtn")?.addEventListener("click", () => {
+    document.getElementById("templatePickerDialog")?.close();
   });
 }
 
@@ -470,16 +486,12 @@ async function addTemplateValue(field, rawValue) {
   }
   list.push(value);
   await saveTemplates();
-  renderTemplateDatalists();
-  renderTemplateChipRows();
   renderTemplatesPanel();
 }
 
 async function removeTemplateValue(field, value) {
   state.templates[field] = (state.templates[field] || []).filter((v) => v !== value);
   await saveTemplates();
-  renderTemplateDatalists();
-  renderTemplateChipRows();
   renderTemplatesPanel();
 }
 
@@ -1175,7 +1187,7 @@ function bindEvents() {
   });
   bindGroupsListEvents();
   bindSimpleToggle(els.templatesToggleBtn, els.templatesToolbar, els.templatesBody);
-  bindTemplateChipRowEvents();
+  bindTemplatePickerEvents();
   bindTemplatesPanelEvents();
 }
 

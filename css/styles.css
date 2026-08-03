@@ -980,30 +980,65 @@ select:focus {
   line-height: 1.45;
 }
 
-.template-chip-row {
+.field-label-row {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: -6px 0 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.template-chip-row:empty {
-  margin: 0;
-}
-
-.template-insert-chip {
-  min-height: 32px;
-  padding: 0 10px;
-  font-size: 12px;
-  border-radius: 999px;
+.template-picker-btn {
+  min-height: 24px;
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--brand);
   background: var(--soft);
   border-color: var(--line);
-  color: var(--ink);
+  border-radius: 999px;
+  flex: 0 0 auto;
 }
 
-.template-insert-chip:hover {
+.template-picker-btn:hover {
+  border-color: var(--brand);
+}
+
+.template-picker-dialog {
+  width: min(420px, calc(100% - 28px));
+  max-height: min(560px, calc(100% - 28px));
+  display: flex;
+  flex-direction: column;
+}
+
+.template-picker-dialog .confirm-dialog-body {
+  overflow-y: auto;
+}
+
+.template-picker-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.template-picker-option {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #fff;
+  border-color: var(--line);
+  font-size: 13px;
+}
+
+.template-picker-option:hover {
   border-color: var(--brand);
   color: var(--brand);
+}
+
+.template-picker-option.is-picked {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
 }
 
 .template-chip-list {

@@ -108,47 +108,49 @@
           <section class="form-card">
             <h3>პაკეტი და დუშთასე</h3>
             <div class="two-col">
-              <label>პაკეტი S/M
-                <input name="packageType" list="packageTypeTemplates" autocomplete="off" />
-                <datalist id="packageTypeTemplates"></datalist>
+              <label>
+                <span class="field-label-row">პაკეტი S/M <button type="button" class="template-picker-btn" data-template-field="packageType">შაბლონები</button></span>
+                <input name="packageType" autocomplete="off" />
               </label>
-              <label>ანტირუჩი
-                <input name="antiSlip" list="antiSlipTemplates" autocomplete="off" />
-                <datalist id="antiSlipTemplates"></datalist>
+              <label>
+                <span class="field-label-row">ანტირუჩი <button type="button" class="template-picker-btn" data-template-field="antiSlip">შაბლონები</button></span>
+                <input name="antiSlip" autocomplete="off" />
               </label>
             </div>
-            <label>დუშთასეს ზომა
-              <input name="showerTraySize" list="showerTraySizeTemplates" autocomplete="off" />
-              <datalist id="showerTraySizeTemplates"></datalist>
+            <label>
+              <span class="field-label-row">დუშთასეს ზომა <button type="button" class="template-picker-btn" data-template-field="showerTraySize">შაბლონები</button></span>
+              <input name="showerTraySize" autocomplete="off" />
             </label>
           </section>
 
           <section class="form-card">
             <h3>მასალები</h3>
             <div class="two-col">
-              <label>შუშის ზომა
+              <label>
+                <span class="field-label-row">შუშის ზომა <button type="button" class="template-picker-btn" data-template-field="glassPartitionSize">შაბლონები</button></span>
                 <textarea name="glassPartitionSize" rows="2"></textarea>
               </label>
-              <label>კარი
-                <input name="hingedDoorSize" list="hingedDoorSizeTemplates" autocomplete="off" />
-                <datalist id="hingedDoorSizeTemplates"></datalist>
+              <label>
+                <span class="field-label-row">კარი <button type="button" class="template-picker-btn" data-template-field="hingedDoorSize">შაბლონები</button></span>
+                <input name="hingedDoorSize" autocomplete="off" />
               </label>
             </div>
-            <div class="template-chip-row" data-chip-field="glassPartitionSize"></div>
-            <label>პანელის ფერი
-              <input name="panelColor" list="panelColorTemplates" autocomplete="off" />
-              <datalist id="panelColorTemplates"></datalist>
+            <label>
+              <span class="field-label-row">პანელის ფერი <button type="button" class="template-picker-btn" data-template-field="panelColor">შაბლონები</button></span>
+              <input name="panelColor" autocomplete="off" />
             </label>
-            <label>იატაკის პანელის ფერი
-              <input name="floorPanelColor" list="floorPanelColorTemplates" autocomplete="off" />
-              <datalist id="floorPanelColorTemplates"></datalist>
+            <label>
+              <span class="field-label-row">იატაკის პანელის ფერი <button type="button" class="template-picker-btn" data-template-field="floorPanelColor">შაბლონები</button></span>
+              <input name="floorPanelColor" autocomplete="off" />
             </label>
-            <label>პანელი სადამდე კეთდება
-              <input name="panelHeight" list="panelHeightTemplates" autocomplete="off" />
-              <datalist id="panelHeightTemplates"></datalist>
+            <label>
+              <span class="field-label-row">პანელი სადამდე კეთდება <button type="button" class="template-picker-btn" data-template-field="panelHeight">შაბლონები</button></span>
+              <input name="panelHeight" autocomplete="off" />
             </label>
-            <label>დასაყენებლების სია <textarea name="installables" rows="4"></textarea></label>
-            <div class="template-chip-row" data-chip-field="installables"></div>
+            <label>
+              <span class="field-label-row">დასაყენებლების სია <button type="button" class="template-picker-btn" data-template-field="installables">შაბლონები</button></span>
+              <textarea name="installables" rows="4"></textarea>
+            </label>
           </section>
 
           <section class="form-card">
@@ -438,6 +440,17 @@
     <div class="confirm-dialog-actions">
       <button type="button" id="confirmDialogCancelBtn">გაუქმება</button>
       <button type="button" id="confirmDialogOkBtn" class="primary">დადასტურება</button>
+    </div>
+  </dialog>
+
+  <dialog id="templatePickerDialog" class="confirm-dialog template-picker-dialog">
+    <div class="confirm-dialog-body">
+      <h2 id="templatePickerTitle">შაბლონები</h2>
+      <p class="templates-hint" id="templatePickerHint"></p>
+      <div id="templatePickerList" class="template-picker-list"></div>
+    </div>
+    <div class="confirm-dialog-actions">
+      <button type="button" id="templatePickerCloseBtn">დახურვა</button>
     </div>
   </dialog>
 </body>
