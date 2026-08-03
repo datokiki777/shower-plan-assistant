@@ -487,8 +487,10 @@ function renderTemplatesPanel() {
     const chips = values.length
       ? values
           .map(
-            (v) => `
+            (v, i) => `
         <span class="template-chip">
+          <button type="button" class="template-chip-move" data-move-field="${field}" data-move-index="${i}" data-move-dir="-1" aria-label="ზემოთ აწევა"${i === 0 ? " disabled" : ""}>▲</button>
+          <button type="button" class="template-chip-move" data-move-field="${field}" data-move-index="${i}" data-move-dir="1" aria-label="ქვემოთ ჩაწევა"${i === values.length - 1 ? " disabled" : ""}>▼</button>
           ${escapeHtml(v)}
           <button type="button" data-remove-template-field="${field}" data-remove-template-value="${escapeHtml(v)}" aria-label="წაშლა">×</button>
         </span>`
@@ -529,8 +531,22 @@ async function removeTemplateValue(field, value) {
   renderTemplatesPanel();
 }
 
+async function moveTemplateValue(field, index, direction) {
+  const list = state.templates[field] || [];
+  const targetIndex = index + direction;
+  if (targetIndex < 0 || targetIndex >= list.length) return;
+  [list[index], list[targetIndex]] = [list[targetIndex], list[index]];
+  await saveTemplates();
+  renderTemplatesPanel();
+}
+
 function bindTemplatesPanelEvents() {
   els.templatesFieldsList?.addEventListener("click", (event) => {
+    const moveBtn = event.target.closest("[data-move-field]");
+    if (moveBtn) {
+      moveTemplateValue(moveBtn.dataset.moveField, Number(moveBtn.dataset.moveIndex), Number(moveBtn.dataset.moveDir));
+      return;
+    }
     const addBtn = event.target.closest("[data-template-add-btn]");
     if (addBtn) {
       const field = addBtn.dataset.templateAddBtn;

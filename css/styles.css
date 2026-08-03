@@ -1095,6 +1095,18 @@ select:focus {
   border-color: transparent;
 }
 
+.template-chip-move {
+  color: var(--brand) !important;
+  font-size: 10px !important;
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.template-chip-move:disabled {
+  color: var(--line) !important;
+  cursor: default;
+}
+
 .group-card {
   border: 1px solid var(--line);
   border-radius: 8px;
