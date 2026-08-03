@@ -647,7 +647,7 @@ function buildStandaloneReportDocument() {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Shower Plan Assistant PDF</title>
+  <title>Plans PDF</title>
   <style>
     @page { margin: 10mm; }
     * { box-sizing: border-box; }
@@ -769,7 +769,7 @@ function buildPrintableReportContent(report = state.report) {
     : "";
 
   return `
-      <h1>Shower Plan Assistant</h1>
+      <h1>Plans</h1>
       <p>ქართული სამუშაო ანგარიში</p>
       ${section("კლიენტის მონაცემები", client)}
       ${section("პაკეტი და დუშთასე", packageInfo)}

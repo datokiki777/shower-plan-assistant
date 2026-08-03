@@ -244,7 +244,7 @@
         : "";
 
     return `
-      <h1>Shower Plan Assistant — დატვირთვის სია</h1>
+      <h1>Plans — დატვირთვის სია</h1>
       <p>${escapeHtml(state.loading.title) || "დატვირთვის სია"}</p>
       ${section("დუშთასეები", trayListHtml)}
       ${section("შუშები (+ კარი)", glassListHtml)}
@@ -263,7 +263,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Shower Plan Assistant — დატვირთვა PDF</title>
+  <title>Plans — დატვირთვა PDF</title>
   <style>
     @page { margin: 10mm; }
     * { box-sizing: border-box; }

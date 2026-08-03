@@ -225,5 +225,5 @@ app.get("/api/health", (_req, res) => {
 
 const port = Number(process.env.PORT || 4177);
 app.listen(port, () => {
-  console.log(`Shower Plan Assistant running at http://localhost:${port}`);
+  console.log(`Plans running at http://localhost:${port}`);
 });
