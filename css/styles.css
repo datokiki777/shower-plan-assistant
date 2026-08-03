@@ -1006,6 +1006,9 @@ select:focus {
 .template-picker-dialog {
   width: min(420px, calc(100% - 28px));
   max-height: min(560px, calc(100% - 28px));
+}
+
+.template-picker-dialog[open] {
   display: flex;
   flex-direction: column;
 }
@@ -1018,6 +1021,17 @@ select:focus {
 
 .template-picker-dialog .confirm-dialog-actions {
   flex: 0 0 auto;
+}
+
+.template-picker-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.template-picker-head h2 {
+  margin: 0;
 }
 
 .template-picker-list {

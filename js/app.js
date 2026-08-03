@@ -471,6 +471,9 @@ function bindTemplatePickerEvents() {
   document.getElementById("templatePickerCloseBtn")?.addEventListener("click", () => {
     dialog?.close();
   });
+  document.getElementById("templatePickerCloseXBtn")?.addEventListener("click", () => {
+    dialog?.close();
+  });
   // Tapping the backdrop (outside the dialog's content box) closes it too.
   dialog?.addEventListener("click", (event) => {
     if (event.target === dialog) dialog.close();
