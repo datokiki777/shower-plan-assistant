@@ -255,7 +255,9 @@
       }
       if (action === "delete") {
         const worker = workers.find((w) => w.id === id);
-        if (worker && window.confirm(`წაიშალოს ${worker.name} და მისი სრული ისტორია?`)) {
+        const confirmed =
+          worker && (await window.AppConfirm(`წაიშალოს ${worker.name} და მისი სრული ისტორია?`, { title: "პიროვნების წაშლა" }));
+        if (confirmed) {
           await removeWorker(id);
           workers = workers.filter((w) => w.id !== id);
           render();
@@ -292,7 +294,11 @@
         const file = event.target.files[0];
         const data = JSON.parse(await file.text());
         if (data.app !== "EES" || !Array.isArray(data.workers)) throw new Error("invalid backup file");
-        if (!window.confirm(`Restore ჩაანაცვლებს მიმდინარე ${workers.length} ჩანაწერს. გავაგრძელოთ?`)) return;
+        const confirmed = await window.AppConfirm(
+          `Restore ჩაანაცვლებს მიმდინარე ${workers.length} ჩანაწერს. გავაგრძელოთ?`,
+          { title: "მონაცემების აღდგენა" }
+        );
+        if (!confirmed) return;
         await clearWorkers();
         workers = data.workers;
         for (const w of workers) await putWorker(w);

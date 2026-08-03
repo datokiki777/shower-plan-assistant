@@ -428,6 +428,11 @@
     els.shareBtn?.addEventListener("click", shareLoading);
 
     els.clearHistoryBtn?.addEventListener("click", async () => {
+      const confirmed = await window.AppConfirm(
+        "წაიშლება დატვირთვის ისტორიაში შენახული ყველა სია. ეს ქმედება ვერ გაუქმდება. გავაგრძელოთ?",
+        { title: "მთელი ისტორიის წაშლა" }
+      );
+      if (!confirmed) return;
       await window.AppDB.clearRecords(window.AppDB.LOADING_STORE);
       await renderHistory();
       showAlert("ისტორია წაიშალა.", "info");

@@ -348,7 +348,7 @@ async function removeGroup(group) {
   const message = clientsInGroup.length
     ? `ჯგუფი „${group.name}“ შეიცავს ${clientsInGroup.length} კლიენტს. ჯგუფის წაშლა წაშლის ამ კლიენტებსაც. დარწმუნებული ხარ?`
     : `წავშალო ჯგუფი „${group.name}“?`;
-  if (!window.confirm(message)) return;
+  if (!(await showConfirm(message, { title: "ჯგუფის წაშლა" }))) return;
   await Promise.all(clientsInGroup.map((r) => deleteRecord(STORE, r.id)));
   await deleteGroup(group.id);
   await loadGroups();
@@ -361,7 +361,7 @@ async function removeGroup(group) {
 }
 
 async function deleteClientReport(report) {
-  if (!window.confirm(`წავშალო კლიენტი „${report.clientName || "უსახელო"}“?`)) return;
+  if (!(await showConfirm(`წავშალო კლიენტი „${report.clientName || "უსახელო"}“?`, { title: "კლიენტის წაშლა" }))) return;
   await deleteRecord(STORE, report.id);
   if (state.report.id === report.id) {
     state.report = createEmptyReport();
@@ -801,6 +801,44 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
+function showConfirm(message, options = {}) {
+  const dialog = document.getElementById("confirmDialog");
+  const titleEl = document.getElementById("confirmDialogTitle");
+  const messageEl = document.getElementById("confirmDialogMessage");
+  const okBtn = document.getElementById("confirmDialogOkBtn");
+  const cancelBtn = document.getElementById("confirmDialogCancelBtn");
+  if (!dialog || !titleEl || !messageEl || !okBtn || !cancelBtn) {
+    // Fallback if the dialog markup is somehow missing - keeps the app usable either way.
+    return Promise.resolve(window.confirm(message));
+  }
+
+  titleEl.textContent = options.title || "დაადასტურე";
+  messageEl.textContent = message;
+  okBtn.textContent = options.confirmText || "დადასტურება";
+  cancelBtn.textContent = options.cancelText || "გაუქმება";
+  okBtn.classList.toggle("confirm-danger-btn", options.danger !== false);
+  okBtn.classList.toggle("primary", options.danger === false);
+
+  return new Promise((resolve) => {
+    dialog.returnValue = "cancel";
+    const onClose = () => {
+      dialog.removeEventListener("close", onClose);
+      resolve(dialog.returnValue === "ok");
+    };
+    okBtn.onclick = () => {
+      dialog.returnValue = "ok";
+      dialog.close();
+    };
+    cancelBtn.onclick = () => {
+      dialog.returnValue = "cancel";
+      dialog.close();
+    };
+    dialog.addEventListener("close", onClose);
+    dialog.showModal();
+  });
+}
+window.AppConfirm = showConfirm;
+
 function showUpdateDialog(onConfirm) {
   const dialog = els.updateDialog;
   if (!dialog) {
@@ -884,6 +922,11 @@ function bindEvents() {
     clearAlert();
   });
   els.clearHistoryBtn?.addEventListener("click", async () => {
+    const confirmed = await showConfirm(
+      "წაიშლება ისტორიაში შენახული ყველა კლიენტი, ყველა ჯგუფში. ეს ქმედება ვერ გაუქმდება. გავაგრძელოთ?",
+      { title: "მთელი ისტორიის წაშლა" }
+    );
+    if (!confirmed) return;
     await clearReports();
     await renderHistory();
     await renderGroupsPanel();
