@@ -372,6 +372,17 @@ async function deleteClientReport(report) {
   showAlert("კლიენტი წაიშალა.", "info");
 }
 
+function startNewClientInGroup(groupId) {
+  state.report = createEmptyReport();
+  state.report.groupId = groupId;
+  syncFormFromReport();
+  renderGroupSelectOptions();
+  setReportBodyOpen(true);
+  clearAlert();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  els.reportForm.querySelector('[name="clientName"]')?.focus();
+}
+
 function loadClientIntoForm(report) {
   state.report = normalizeReport(report);
   syncFormFromReport();
@@ -479,6 +490,7 @@ async function renderGroupsPanel() {
     .map((g) => {
       const actions = `
         <div class="group-card-actions">
+          <button type="button" class="primary" data-group-action="add-client" data-id="${escapeHtml(g.id)}">+ კლიენტი</button>
           <button type="button" data-group-action="rename" data-id="${escapeHtml(g.id)}">გადარქმევა</button>
           <button type="button" class="danger-action" data-group-action="delete" data-id="${escapeHtml(g.id)}">წაშლა</button>
         </div>`;
@@ -528,6 +540,7 @@ function bindGroupsListEvents() {
       if (!group) return;
       if (groupBtn.dataset.groupAction === "rename") renameGroupPrompt(group);
       else if (groupBtn.dataset.groupAction === "delete") removeGroup(group);
+      else if (groupBtn.dataset.groupAction === "add-client") startNewClientInGroup(group.id);
     }
   });
 }
