@@ -29,7 +29,8 @@ const fields = [
 const state = {
   report: createEmptyReport(),
   groups: [],
-  openGroupIds: new Set()
+  openGroupIds: new Set(),
+  openHistoryGroupIds: new Set()
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -122,7 +123,8 @@ function createEmptyReport() {
     installables: [],
     extraWork: [],
     workNotes: [],
-    sketch: null
+    sketch: null,
+    archived: false
   };
 }
 
@@ -185,6 +187,7 @@ function normalizeReport(payload) {
   report.id = payload.id || crypto.randomUUID();
   report.createdAt = payload.createdAt || new Date().toISOString();
   report.sketch = payload.sketch && typeof payload.sketch === "object" ? payload.sketch : null;
+  report.archived = Boolean(payload.archived);
   fields.forEach((name) => {
     const isArrayField = Array.isArray(createEmptyReport()[name]);
     if (isArrayField && !Array.isArray(report[name])) report[name] = textToArray(report[name]);
@@ -276,6 +279,7 @@ async function saveCurrentReport(showMessage = true) {
     return;
   }
   state.report.createdAt = new Date().toISOString();
+  state.report.archived = false;
   await putReport(state.report);
   await renderHistory();
   await renderGroupsPanel();
@@ -284,24 +288,32 @@ async function saveCurrentReport(showMessage = true) {
 
 async function renderHistory() {
   if (!els.historyList) return;
-  const reports = await getReports();
-  els.historyList.innerHTML = "";
+  const [groups, reports] = await Promise.all([getGroups(), getReports()]);
+  const sortedGroups = [...groups].sort((a, b) => String(a.name).localeCompare(String(b.name), "ka"));
+  const byGroup = new Map(sortedGroups.map((g) => [g.id, []]));
+  const noGroup = [];
+  reports.forEach((r) => {
+    if (r.groupId && byGroup.has(r.groupId)) byGroup.get(r.groupId).push(r);
+    else noGroup.push(r);
+  });
+  byGroup.forEach((list) => sortClientsByDate(list));
+  sortClientsByDate(noGroup);
+
   if (!reports.length) {
-    els.historyList.innerHTML = '<div class="history-item"><strong>ისტორია ცარიელია</strong><small>შენახული ანგარიშები აქ გამოჩნდება</small></div>';
+    els.historyList.innerHTML = '<p class="loading-empty">ისტორია ცარიელია — შენახული კლიენტები აქ გამოჩნდება</p>';
     return;
   }
-  reports.slice(0, 12).forEach((report) => {
-    const item = document.createElement("button");
-    item.type = "button";
-    item.className = "history-item";
-    item.innerHTML = `<strong>${escapeHtml(report.clientName || "უსახელო სამუშაო")}</strong><small>${new Date(report.createdAt).toLocaleString("ka-GE")}</small>`;
-    item.addEventListener("click", () => {
-      state.report = normalizeReport(report);
-      syncFormFromReport();
-      showAlert("ისტორიიდან ჩაიტვირთა.", "info");
-    });
-    els.historyList.appendChild(item);
-  });
+
+  const groupBlocks = sortedGroups
+    .map((g) => renderCollapsibleGroupCard(g.id, g.name, byGroup.get(g.id) || [], state.openHistoryGroupIds, { deleteMode: "permanent" }))
+    .join("");
+  const noGroupBlock = noGroup.length
+    ? renderCollapsibleGroupCard("__no_group__", "ჯგუფის გარეშე (ძველი ჩანაწერები)", noGroup, state.openHistoryGroupIds, {
+        deleteMode: "permanent"
+      })
+    : "";
+
+  els.historyList.innerHTML = groupBlocks + noGroupBlock;
 }
 
 async function loadGroups() {
@@ -360,8 +372,26 @@ async function removeGroup(group) {
   await renderGroupsPanel();
 }
 
-async function deleteClientReport(report) {
-  if (!(await showConfirm(`წავშალო კლიენტი „${report.clientName || "უსახელო"}“?`, { title: "კლიენტის წაშლა" }))) return;
+async function archiveClientReport(report) {
+  const confirmed = await showConfirm(
+    `„${report.clientName || "უსახელო"}“ მოიხსნება აქტიური ჯგუფიდან და გადავა ისტორიაში. თუ კვლავ დაგჭირდება, ისტორიიდან ჩატვირთვა და შენახვა დააბრუნებს აქტიურ სამუშაოში. გავაგრძელოთ?`,
+    { title: "წაშლა ჯგუფიდან" }
+  );
+  if (!confirmed) return;
+  const archived = { ...report, archived: true };
+  await putReport(archived);
+  if (state.report.id === report.id) state.report.archived = true;
+  await renderHistory();
+  await renderGroupsPanel();
+  showAlert("კლიენტი ჯგუფიდან მოიხსნა და ისტორიაში გადავიდა.", "info");
+}
+
+async function permanentlyDeleteClientReport(report) {
+  const confirmed = await showConfirm(
+    `„${report.clientName || "უსახელო"}“ სამუდამოდ წაიშლება ისტორიიდან და ვეღარ აღდგება. გავაგრძელოთ?`,
+    { title: "სამუდამო წაშლა" }
+  );
+  if (!confirmed) return;
   await deleteRecord(STORE, report.id);
   if (state.report.id === report.id) {
     state.report = createEmptyReport();
@@ -369,7 +399,7 @@ async function deleteClientReport(report) {
   }
   await renderHistory();
   await renderGroupsPanel();
-  showAlert("კლიენტი წაიშალა.", "info");
+  showAlert("კლიენტი სამუდამოდ წაიშალა.", "info");
 }
 
 function startNewClientInGroup(groupId) {
@@ -434,57 +464,59 @@ function formatJobSchedule(report) {
   return dateLabel || durationLabel || "";
 }
 
+function renderClientRow(report, { deleteMode = "archive" } = {}) {
+  const scheduleLabel = formatJobSchedule(report);
+  const secondaryHtml = scheduleLabel
+    ? `<small class="client-schedule">📅 ${escapeHtml(scheduleLabel)}</small>`
+    : `<small>დამატებულია: ${new Date(report.createdAt).toLocaleDateString("ka-GE")}</small>`;
+  const mapsBtn = report.googleMapsLink
+    ? `<button type="button" class="client-maps-btn" data-action="maps" data-id="${escapeHtml(report.id)}">📍 რუკა</button>`
+    : "";
+  const deleteLabel = deleteMode === "permanent" ? "სამუდამო წაშლა" : "წაშლა";
+  return `
+    <div class="client-row" data-id="${escapeHtml(report.id)}">
+      <div class="client-row-info">
+        <strong>${escapeHtml(report.clientName || "უსახელო კლიენტი")}</strong>
+        ${secondaryHtml}
+      </div>
+      <div class="client-row-actions">
+        <button type="button" data-action="load" data-id="${escapeHtml(report.id)}">ჩატვირთვა</button>
+        ${mapsBtn}
+        <button type="button" class="primary" data-action="share" data-id="${escapeHtml(report.id)}">გაზიარება</button>
+        <button type="button" class="danger-action" data-action="delete" data-delete-mode="${deleteMode}" data-id="${escapeHtml(report.id)}">${deleteLabel}</button>
+      </div>
+    </div>`;
+}
+
+function renderCollapsibleGroupCard(key, name, clients, openIdsSet, { extraHeadBtns = "", deleteMode = "archive" } = {}) {
+  const isOpen = openIdsSet.has(key);
+  return `
+    <div class="group-card${isOpen ? " is-open" : ""}" data-group-key="${escapeHtml(key)}">
+      <div class="group-card-head">
+        <button type="button" class="group-toggle-btn" data-toggle="${escapeHtml(key)}">
+          <span class="group-toggle-caret">▸</span>
+          <strong>${escapeHtml(name)}</strong>
+          <span class="group-count">${clients.length} კლიენტი</span>
+        </button>
+        ${extraHeadBtns}
+      </div>
+      <div class="group-clients"${isOpen ? "" : " hidden"}>
+        ${clients.length ? clients.map((r) => renderClientRow(r, { deleteMode })).join("") : '<p class="loading-empty">კლიენტები ჯერ არ არის</p>'}
+      </div>
+    </div>`;
+}
+
 async function renderGroupsPanel() {
   if (!els.groupsList) return;
   const [groups, reports] = await Promise.all([getGroups(), getReports()]);
   state.groups = groups;
+  const activeReports = reports.filter((r) => !r.archived);
   const sortedGroups = [...groups].sort((a, b) => String(a.name).localeCompare(String(b.name), "ka"));
   const byGroup = new Map(sortedGroups.map((g) => [g.id, []]));
-  reports.forEach((r) => {
+  activeReports.forEach((r) => {
     if (r.groupId && byGroup.has(r.groupId)) byGroup.get(r.groupId).push(r);
   });
   byGroup.forEach((list) => sortClientsByDate(list));
-
-  const renderClientRow = (report) => {
-    const scheduleLabel = formatJobSchedule(report);
-    const secondaryHtml = scheduleLabel
-      ? `<small class="client-schedule">📅 ${escapeHtml(scheduleLabel)}</small>`
-      : `<small>დამატებულია: ${new Date(report.createdAt).toLocaleDateString("ka-GE")}</small>`;
-    const mapsBtn = report.googleMapsLink
-      ? `<button type="button" class="client-maps-btn" data-action="maps" data-id="${escapeHtml(report.id)}">📍 რუკა</button>`
-      : "";
-    return `
-      <div class="client-row" data-id="${escapeHtml(report.id)}">
-        <div class="client-row-info">
-          <strong>${escapeHtml(report.clientName || "უსახელო კლიენტი")}</strong>
-          ${secondaryHtml}
-        </div>
-        <div class="client-row-actions">
-          <button type="button" data-action="load" data-id="${escapeHtml(report.id)}">ჩატვირთვა</button>
-          ${mapsBtn}
-          <button type="button" class="primary" data-action="share" data-id="${escapeHtml(report.id)}">გაზიარება</button>
-          <button type="button" class="danger-action" data-action="delete" data-id="${escapeHtml(report.id)}">წაშლა</button>
-        </div>
-      </div>`;
-  };
-
-  const renderGroupCard = (key, name, clients, extraHeadBtns = "") => {
-    const isOpen = state.openGroupIds.has(key);
-    return `
-      <div class="group-card${isOpen ? " is-open" : ""}" data-group-key="${escapeHtml(key)}">
-        <div class="group-card-head">
-          <button type="button" class="group-toggle-btn" data-toggle="${escapeHtml(key)}">
-            <span class="group-toggle-caret">▸</span>
-            <strong>${escapeHtml(name)}</strong>
-            <span class="group-count">${clients.length} კლიენტი</span>
-          </button>
-          ${extraHeadBtns}
-        </div>
-        <div class="group-clients"${isOpen ? "" : " hidden"}>
-          ${clients.length ? clients.map(renderClientRow).join("") : '<p class="loading-empty">კლიენტები ჯერ არ არის</p>'}
-        </div>
-      </div>`;
-  };
 
   const groupBlocks = sortedGroups
     .map((g) => {
@@ -494,7 +526,10 @@ async function renderGroupsPanel() {
           <button type="button" data-group-action="rename" data-id="${escapeHtml(g.id)}">გადარქმევა</button>
           <button type="button" class="danger-action" data-group-action="delete" data-id="${escapeHtml(g.id)}">წაშლა</button>
         </div>`;
-      return renderGroupCard(g.id, g.name, byGroup.get(g.id) || [], actions);
+      return renderCollapsibleGroupCard(g.id, g.name, byGroup.get(g.id) || [], state.openGroupIds, {
+        extraHeadBtns: actions,
+        deleteMode: "archive"
+      });
     })
     .join("");
 
@@ -505,8 +540,8 @@ async function renderGroupsPanel() {
   }
 }
 
-function bindGroupsListEvents() {
-  els.groupsList?.addEventListener("click", async (event) => {
+function bindClientListEvents(container, { groupActions = false } = {}) {
+  container?.addEventListener("click", async (event) => {
     const toggleBtn = event.target.closest("[data-toggle]");
     if (toggleBtn) {
       const key = toggleBtn.dataset.toggle;
@@ -516,8 +551,9 @@ function bindGroupsListEvents() {
       const willOpen = clientsEl.hidden;
       clientsEl.hidden = !willOpen;
       card.classList.toggle("is-open", willOpen);
-      if (willOpen) state.openGroupIds.add(key);
-      else state.openGroupIds.delete(key);
+      const openIdsSet = container === els.historyList ? state.openHistoryGroupIds : state.openGroupIds;
+      if (willOpen) openIdsSet.add(key);
+      else openIdsSet.delete(key);
       return;
     }
     const clientBtn = event.target.closest("[data-action]");
@@ -530,9 +566,13 @@ function bindGroupsListEvents() {
       if (action === "load") loadClientIntoForm(report);
       else if (action === "maps") window.open(normalizeMapsLink(report.googleMapsLink), "_blank", "noopener");
       else if (action === "share") shareReport(report, clientBtn);
-      else if (action === "delete") deleteClientReport(report);
+      else if (action === "delete") {
+        if (clientBtn.dataset.deleteMode === "permanent") permanentlyDeleteClientReport(report);
+        else archiveClientReport(report);
+      }
       return;
     }
+    if (!groupActions) return;
     const groupBtn = event.target.closest("[data-group-action]");
     if (groupBtn) {
       const id = groupBtn.dataset.id;
@@ -543,6 +583,11 @@ function bindGroupsListEvents() {
       else if (groupBtn.dataset.groupAction === "add-client") startNewClientInGroup(group.id);
     }
   });
+}
+
+function bindGroupsListEvents() {
+  bindClientListEvents(els.groupsList, { groupActions: true });
+  bindClientListEvents(els.historyList, { groupActions: false });
 }
 
 async function generateReportImageBlob(report) {
