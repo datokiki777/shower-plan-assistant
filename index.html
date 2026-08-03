@@ -13,6 +13,7 @@
   <script defer src="js/sketch-editor.js"></script>
   <script defer src="js/app.js"></script>
   <script defer src="js/loading.js"></script>
+  <script defer src="js/periods.js"></script>
 </head>
 <body>
   <main class="app-shell">
@@ -24,6 +25,7 @@
       <div class="mode-toggle" role="group" aria-label="რეჟიმის არჩევა">
         <button type="button" id="modeReportBtn" class="mode-toggle-btn is-active">ანგარიში</button>
         <button type="button" id="modeLoadingBtn" class="mode-toggle-btn">დატვირთვა</button>
+        <button type="button" id="modePeriodsBtn" class="mode-toggle-btn">პერიოდები</button>
       </div>
     </header>
 
@@ -203,7 +205,99 @@
         </section>
       </section>
     </section>
+
+    <section id="periodsView" class="workspace periods-workspace" hidden>
+      <section class="report-panel periods-panel">
+        <div class="report-toolbar">
+          <div>
+            <p class="eyebrow">90 / 180 წესი</p>
+            <h2>პერიოდები</h2>
+          </div>
+          <div class="toolbar-actions">
+            <button type="button" id="periodsBackupBtn">Backup JSON</button>
+            <button type="button" id="periodsRestoreBtn">Restore JSON</button>
+            <input type="file" id="periodsRestoreInput" accept="application/json,.json" hidden />
+            <button class="primary" type="button" id="periodsAddBtn">+ პიროვნება</button>
+          </div>
+        </div>
+
+        <div class="alert" id="periodsAlertBox" hidden></div>
+
+        <div class="periods-stats">
+          <div class="periods-stat">
+            <span>სულ პიროვნება</span>
+            <strong id="periodsTotalCount">0</strong>
+          </div>
+          <div class="periods-stat">
+            <span>ახლა ქვეყანაში</span>
+            <strong id="periodsInsideCount">0</strong>
+          </div>
+          <div class="periods-stat periods-stat-warn">
+            <span>გასვლა ≤ 14 დღე</span>
+            <strong id="periodsUrgentCount">0</strong>
+          </div>
+        </div>
+
+        <div class="periods-search-row">
+          <input type="search" id="periodsSearchInput" placeholder="მოძებნე სახელი…" />
+        </div>
+
+        <div id="periodsWorkerList" class="periods-worker-list"></div>
+        <p class="loading-empty" id="periodsEmptyState" hidden>ჯერ პიროვნება არ არის დამატებული — დაამატე პირველი ღილაკით „+ პიროვნება“.</p>
+      </section>
+    </section>
   </main>
+
+  <dialog id="periodsWorkerDialog" class="periods-dialog">
+    <form id="periodsWorkerForm" method="dialog">
+      <div class="periods-dialog-head">
+        <div>
+          <p class="eyebrow">ჩანაწერი</p>
+          <h2 id="periodsWorkerDialogTitle">პიროვნების დამატება</h2>
+        </div>
+        <button type="button" class="icon-action" data-periods-close>×</button>
+      </div>
+      <input type="hidden" id="periodsWorkerId" />
+      <label>სახელი და გვარი <input id="periodsWorkerName" required maxlength="100" autocomplete="off" placeholder="მაგ. გიორგი მაისურაძე" /></label>
+      <label>ჩამოსვლის თარიღი <input id="periodsEntryDate" required type="date" /></label>
+      <p class="periods-hint">ჩამოსვლის დღე ითვლება პირველ დღედ.</p>
+      <div class="periods-dialog-actions">
+        <button type="button" data-periods-close>გაუქმება</button>
+        <button class="primary" type="submit">შენახვა</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="periodsExitDialog" class="periods-dialog">
+    <form id="periodsExitForm" method="dialog">
+      <div class="periods-dialog-head">
+        <div>
+          <p class="eyebrow">გასვლის დაფიქსირება</p>
+          <h2 id="periodsExitWorkerName"></h2>
+        </div>
+        <button type="button" class="icon-action" data-periods-close>×</button>
+      </div>
+      <input type="hidden" id="periodsExitWorkerId" />
+      <input type="hidden" id="periodsExitStayId" />
+      <label>გასვლის თარიღი <input id="periodsExitDate" required type="date" /></label>
+      <p class="periods-hint">გასვლის დღეც ქვეყანაში ყოფნის დღედ ითვლება.</p>
+      <div class="periods-dialog-actions">
+        <button type="button" data-periods-close>გაუქმება</button>
+        <button class="primary" type="submit">დადასტურება</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="periodsHistoryDialog" class="periods-dialog periods-wide-dialog">
+    <div class="periods-dialog-head">
+      <div>
+        <p class="eyebrow">ისტორია</p>
+        <h2 id="periodsHistoryWorkerName"></h2>
+      </div>
+      <button type="button" class="icon-action" data-periods-close>×</button>
+    </div>
+    <div id="periodsHistoryList"></div>
+  </dialog>
 
   <dialog id="sketchDialog" class="sketch-dialog">
     <form method="dialog" class="sketch-editor-shell">

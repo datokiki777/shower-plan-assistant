@@ -1,8 +1,9 @@
 const DB_NAME = "shower-plan-assistant";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE = "reports";
 const LOADING_STORE = "loadingLists";
 const GROUP_STORE = "groups";
+const PERIODS_STORE = "periodsWorkers";
 
 const fields = [
   "clientName",
@@ -46,8 +47,10 @@ const els = {
   removeSketchBtn: $("#removeSketchBtn"),
   modeReportBtn: $("#modeReportBtn"),
   modeLoadingBtn: $("#modeLoadingBtn"),
+  modePeriodsBtn: $("#modePeriodsBtn"),
   reportView: $("#reportView"),
   loadingView: $("#loadingView"),
+  periodsView: $("#periodsView"),
   updateDialog: $("#updateDialog"),
   updateYesBtn: $("#updateYesBtn"),
   updateNoBtn: $("#updateNoBtn"),
@@ -69,15 +72,18 @@ function setReportBodyOpen(open) {
 }
 
 function setMode(mode, persist = true) {
-  const isLoading = mode === "loading";
-  els.reportView.hidden = isLoading;
-  els.loadingView.hidden = !isLoading;
-  els.modeReportBtn.classList.toggle("is-active", !isLoading);
-  els.modeLoadingBtn.classList.toggle("is-active", isLoading);
-  if (isLoading) window.LoadingMode?.onShow();
+  const validMode = ["report", "loading", "periods"].includes(mode) ? mode : "report";
+  els.reportView.hidden = validMode !== "report";
+  els.loadingView.hidden = validMode !== "loading";
+  if (els.periodsView) els.periodsView.hidden = validMode !== "periods";
+  els.modeReportBtn.classList.toggle("is-active", validMode === "report");
+  els.modeLoadingBtn.classList.toggle("is-active", validMode === "loading");
+  els.modePeriodsBtn?.classList.toggle("is-active", validMode === "periods");
+  if (validMode === "loading") window.LoadingMode?.onShow();
+  if (validMode === "periods") window.PeriodsMode?.onShow();
   if (persist) {
     try {
-      localStorage.setItem(MODE_STORAGE_KEY, isLoading ? "loading" : "report");
+      localStorage.setItem(MODE_STORAGE_KEY, validMode);
     } catch {
       // localStorage unavailable (private mode etc.) - ignore, mode just won't persist.
     }
@@ -91,7 +97,7 @@ function restoreMode() {
   } catch {
     storedMode = "report";
   }
-  setMode(storedMode === "loading" ? "loading" : "report", false);
+  setMode(storedMode, false);
 }
 
 function createEmptyReport() {
@@ -188,18 +194,25 @@ function normalizeReport(payload) {
   return report;
 }
 
+let dbPromise = null;
 function openDb() {
-  return new Promise((resolve, reject) => {
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: "id" });
       if (!db.objectStoreNames.contains(LOADING_STORE)) db.createObjectStore(LOADING_STORE, { keyPath: "id" });
       if (!db.objectStoreNames.contains(GROUP_STORE)) db.createObjectStore(GROUP_STORE, { keyPath: "id" });
+      if (!db.objectStoreNames.contains(PERIODS_STORE)) db.createObjectStore(PERIODS_STORE, { keyPath: "id" });
     };
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onerror = () => {
+      dbPromise = null;
+      reject(req.error);
+    };
   });
+  return dbPromise;
 }
 
 async function putRecord(storeName, record) {
@@ -250,7 +263,7 @@ const putGroup = (group) => putRecord(GROUP_STORE, group);
 const getGroups = () => getRecords(GROUP_STORE);
 const deleteGroup = (id) => deleteRecord(GROUP_STORE, id);
 
-window.AppDB = { putRecord, getRecords, clearRecords, deleteRecord, LOADING_STORE };
+window.AppDB = { putRecord, getRecords, clearRecords, deleteRecord, LOADING_STORE, PERIODS_STORE };
 
 async function saveCurrentReport(showMessage = true) {
   syncReportFromForm();
@@ -865,6 +878,7 @@ function bindEvents() {
   });
   els.modeReportBtn?.addEventListener("click", () => setMode("report"));
   els.modeLoadingBtn?.addEventListener("click", () => setMode("loading"));
+  els.modePeriodsBtn?.addEventListener("click", () => setMode("periods"));
   els.reportForm.addEventListener("change", () => {
     syncReportFromForm();
     clearAlert();
@@ -899,6 +913,7 @@ async function init() {
   await loadGroups();
   await renderGroupsPanel();
   window.LoadingMode?.init();
+  window.PeriodsMode?.init();
   restoreMode();
   registerServiceWorker();
 }

@@ -675,6 +675,273 @@ select:focus {
   display: none;
 }
 
+/* ---- Periods mode (90/180-day tracker) ---- */
+
+.periods-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.periods-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px 14px;
+}
+
+.periods-stat span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.periods-stat strong {
+  font-size: 24px;
+}
+
+.periods-stat-warn strong {
+  color: var(--brand-2);
+}
+
+.periods-search-row {
+  margin-bottom: 14px;
+}
+
+.text-btn-periods {
+  border: none;
+  background: none;
+  color: var(--brand);
+  font-weight: 750;
+  padding: 0;
+  min-height: auto;
+}
+
+.text-btn-periods:hover {
+  border-color: transparent;
+  text-decoration: underline;
+}
+
+.periods-search-row input {
+  width: 100%;
+  max-width: 420px;
+}
+
+.periods-worker-list {
+  display: grid;
+  gap: 12px;
+}
+
+.periods-worker-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px 16px;
+}
+
+.periods-worker-main {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.3fr) repeat(3, minmax(120px, 1fr)) auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.periods-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.periods-avatar {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--soft);
+  color: var(--brand);
+  font-weight: 800;
+}
+
+.periods-person h3 {
+  margin: 0 0 3px;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.periods-status {
+  font-size: 12px;
+  font-weight: 750;
+  color: var(--brand);
+}
+
+.periods-status.out {
+  color: var(--muted);
+}
+
+.periods-datum span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.periods-datum strong {
+  font-size: 13.5px;
+}
+
+.periods-datum-depart strong {
+  color: var(--danger);
+}
+
+.periods-actions {
+  display: flex;
+  gap: 6px;
+  justify-self: end;
+}
+
+.periods-card-footer {
+  border-top: 1px solid var(--line);
+  margin-top: 12px;
+  padding-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.periods-progress {
+  width: 140px;
+  height: 7px;
+  background: var(--soft);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.periods-progress i {
+  display: block;
+  height: 100%;
+  background: var(--brand);
+  border-radius: inherit;
+}
+
+.periods-progress i.warn {
+  background: var(--brand-2);
+}
+
+.periods-dialog {
+  width: min(480px, calc(100% - 28px));
+  margin: auto;
+  padding: 18px;
+  border: 1px solid #b8c8c5;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgba(10, 31, 28, 0.3);
+}
+
+.periods-dialog::backdrop {
+  background: rgba(10, 31, 28, 0.55);
+}
+
+.periods-dialog form {
+  display: grid;
+  gap: 14px;
+}
+
+.periods-dialog label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.periods-dialog-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.periods-dialog-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.periods-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.periods-hint {
+  margin: -6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.periods-wide-dialog {
+  width: min(620px, calc(100% - 28px));
+}
+
+.periods-history-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  align-items: center;
+}
+
+.periods-history-row span {
+  display: block;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.periods-history-row strong {
+  font-size: 13.5px;
+}
+
+@media (max-width: 700px) {
+  .periods-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .periods-worker-main {
+    grid-template-columns: 1fr 1fr;
+    position: relative;
+  }
+
+  .periods-person {
+    grid-column: 1 / -1;
+    padding-right: 96px;
+  }
+
+  .periods-actions {
+    position: absolute;
+    right: 0;
+    top: 0;
+  }
+
+  .periods-datum-return {
+    grid-column: 1 / -1;
+  }
+
+  .periods-progress {
+    width: 100%;
+  }
+}
+
 .groups-panel .section-head {
   margin-bottom: 12px;
 }
@@ -985,6 +1252,8 @@ select:focus {
 
   .mode-toggle-btn {
     flex: 1 1 0;
+    padding: 0 6px;
+    font-size: 12.5px;
   }
 
   .loading-item-row {
