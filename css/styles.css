@@ -206,6 +206,10 @@ button:disabled { opacity: 0.55; cursor: wait; }
 
 .toolbar-actions { flex-wrap: wrap; justify-content: flex-end; }
 
+.form-toolbar-actions {
+  margin-bottom: 14px;
+}
+
 .alert {
   border-radius: 8px;
   border: 1px solid #e8c58b;
