@@ -90,7 +90,10 @@ const els = {
   templatesToolbar: $("#templatesToolbar"),
   templatesToggleBtn: $("#templatesToggleBtn"),
   templatesBody: $("#templatesBody"),
-  templatesFieldsList: $("#templatesFieldsList")
+  templatesFieldsList: $("#templatesFieldsList"),
+  historyToolbar: $("#historyToolbar"),
+  historyToggleBtn: $("#historyToggleBtn"),
+  historyBody: $("#historyBody")
 };
 
 const MODE_STORAGE_KEY = "shower-plan-assistant-mode";
@@ -1237,6 +1240,7 @@ function bindEvents() {
   });
   bindGroupsListEvents();
   bindSimpleToggle(els.templatesToggleBtn, els.templatesToolbar, els.templatesBody);
+  bindSimpleToggle(els.historyToggleBtn, els.historyToolbar, els.historyBody);
   bindTemplatePickerEvents();
   bindTemplatesPanelEvents();
 }

@@ -157,6 +157,24 @@
           </section>
         </form>
 
+        <section class="history manual-history">
+          <div class="report-toolbar" id="historyToolbar">
+            <button type="button" class="report-toggle-btn" id="historyToggleBtn">
+              <span class="report-toggle-caret">▸</span>
+              <span>
+                <p class="eyebrow">არქივი</p>
+                <h2>ისტორია</h2>
+              </span>
+            </button>
+            <div class="toolbar-actions">
+              <button type="button" id="clearHistoryBtn">ყველას წაშლა</button>
+            </div>
+          </div>
+          <div id="historyBody" hidden>
+            <div id="historyList" class="groups-list"></div>
+          </div>
+        </section>
+
         <section class="history templates-panel">
           <div class="report-toolbar" id="templatesToolbar">
             <button type="button" class="report-toggle-btn" id="templatesToggleBtn">
@@ -173,13 +191,6 @@
           </div>
         </section>
 
-        <section class="history manual-history">
-          <div class="section-head">
-            <h2>ისტორია</h2>
-            <button type="button" id="clearHistoryBtn">ყველას წაშლა</button>
-          </div>
-          <div id="historyList" class="groups-list"></div>
-        </section>
         </div>
       </section>
     </section>
