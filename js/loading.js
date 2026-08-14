@@ -202,14 +202,33 @@
       return;
     }
     items.slice(0, 12).forEach((record) => {
-      const item = document.createElement("button");
-      item.type = "button";
-      item.className = "history-item";
-      item.innerHTML = `<strong>${escapeHtml(record.title || "უსახელო დატვირთვა")}</strong><small>${new Date(record.createdAt).toLocaleString("ka-GE")}</small>`;
-      item.addEventListener("click", () => {
+      const item = document.createElement("div");
+      item.className = "history-item history-item-row";
+      item.innerHTML = `
+        <button type="button" class="history-item-load">
+          <strong>${escapeHtml(record.title || "უსახელო დატვირთვა")}</strong>
+          <small>${new Date(record.createdAt).toLocaleString("ka-GE")}</small>
+        </button>
+        <button type="button" class="danger-action history-item-delete">წაშლა</button>
+      `;
+      item.querySelector(".history-item-load").addEventListener("click", () => {
         state.loading = { ...createEmptyLoading(), ...record };
         renderAll();
         showAlert("ისტორიიდან ჩაიტვირთა.", "info");
+      });
+      item.querySelector(".history-item-delete").addEventListener("click", async () => {
+        const confirmed = await window.AppConfirm(
+          `წაიშლება „${record.title || "უსახელო დატვირთვა"}“. ეს ქმედება ვერ გაუქმდება. გავაგრძელოთ?`,
+          { title: "სიის წაშლა" }
+        );
+        if (!confirmed) return;
+        await window.AppDB.deleteRecord(window.AppDB.LOADING_STORE, record.id);
+        if (state.loading.id === record.id) {
+          state.loading = createEmptyLoading();
+          renderAll();
+        }
+        await renderHistory();
+        showAlert("სია წაიშალა.", "info");
       });
       els.historyList.appendChild(item);
     });
