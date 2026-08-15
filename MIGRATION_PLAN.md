@@ -31,6 +31,7 @@ branch, not this planning branch): an "Export data for V2" action.
 {
   "format": "shower-plan-assistant-legacy-export",
   "sourceVersion": 1,
+  "sourceDbVersion": 5,
   "exportVersion": 1,
   "exportId": "UUID generated at export time",
   "exportedAt": "ISO 8601 timestamp",
@@ -43,6 +44,15 @@ branch, not this planning branch): an "Export data for V2" action.
   }
 }
 ```
+Two distinct version fields, deliberately not conflated:
+- **`sourceVersion`** — the version of *this export/legacy-import format
+  itself*. Always `1` for the current format. This is what the V2 importer's
+  compatibility check is against (§10 below).
+- **`sourceDbVersion`** — the V1 app's actual IndexedDB schema version
+  (`DB_VERSION` in `js/app.js`, currently `5`) at export time. Informational
+  only — V2 may inspect it for diagnostics or future format-specific
+  handling, but it is never what gates whether an import is accepted.
+
 Every array is the **unmodified** `getRecords()` output for that store —
 the export step does no transformation. All transformation happens on the
 V2 import side (§5), so the export code stays trivial and low-risk to add
@@ -204,8 +214,14 @@ Before running any transformation:
 ## 10. Verification / preview UX
 
 Before writing anything:
-1. Parse + Zod-validate the file (reject with a clear message on bad JSON
-   or an unsupported `sourceVersion`).
+1. Parse + Zod-validate the file. Reject with a clear message if `format`
+   doesn't match, or if `sourceVersion !== 1` (the only supported
+   legacy-export format version right now — this is the gating check, not
+   `sourceDbVersion`). `sourceDbVersion` is read and may be surfaced in the
+   preview for the user's/support's information (e.g. "exported from V1
+   schema v5"), but a difference in `sourceDbVersion` alone never blocks an
+   import — the export format (§3) already normalizes away V1's internal
+   schema-version churn.
 2. Run the transformation **in memory only** (no writes) to get final counts
    and warnings (orphaned `groupId`s, dropped sketches, etc. — see §5).
 3. Show the preview:
