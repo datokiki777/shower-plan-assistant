@@ -81,6 +81,13 @@ everything. This is a direct, faithful port of the V1 UX that was already
 built and tuned across this conversation, just with a real field instead of
 a boolean and an explicit `status` alongside it.
 
+**Migration note:** V1 has no signal for `"planned"`/`"completed"` — only
+its own active/archived lifecycle. Migrated jobs are therefore only ever
+assigned `status: "active"` or `status: "archived"` (mapped directly from
+V1's `archived: false`/`true`), never `"planned"` or `"completed"` — see
+`MIGRATION_PLAN.md` §5 for the exact rule. `"planned"` and `"completed"`
+are available for jobs created in V2 going forward.
+
 **`clientSnapshot`** exists so a completed job's printed/shared report never
 silently changes if the client's contact info is edited later (spec §14).
 It is populated from the `Client` at job-creation time and never

@@ -89,7 +89,7 @@ merging).
 | `glassPartitionSize` | split on `\r?\n`, trimmed, empty lines dropped -> `Job.glassPartitionSize: string[]` (matches how V1's own append-template feature already treats this field's content) |
 | `installables`, `extraWork`, `workNotes` | already arrays in V1 — copied as-is |
 | `sketch` | **dropped**, not migrated (sketch editor out of scope — spec §2/§56). Logged as a warning if non-null so the user knows a job had a sketch that didn't come across, rather than silently losing it without mention. |
-| `archived` (boolean) | `Job.status = archived ? "archived" : "completed"`, `Job.archivedAt = archived ? createdAt : null`. **Rationale:** V1 has no other status signal, so a non-archived V1 report cannot be distinguished as "planned" vs "active" vs "completed" — mapping it to `"completed"` is the safest default (it will already show correctly in every V2 list that isn't specifically filtered to "planned"/"active"); users can manually re-triage status after migration if desired. This choice is deliberately conservative rather than guessed. |
+| `archived` (boolean) | `Job.status = archived ? "archived" : "active"`, `Job.archivedAt = archived ? createdAt : null`. **Rationale (corrected):** V1 already has a working active/archived lifecycle (`archived: false` = currently active in the app today, `archived: true` = archived). Migration must be zero-surprise: it maps that lifecycle directly (`false` → `"active"`, `true` → `"archived"`) rather than guessing a richer status like `"completed"`. Nothing about a non-archived V1 report implies "finished" — inventing that would misrepresent real V1 records. The richer `"planned"`/`"completed"` states remain available in V2's `JobStatus` for jobs created after migration, but are never assigned to migrated records. |
 
 ### `groups[]` -> `Group`
 
@@ -109,7 +109,8 @@ the original array. The wrapper record's own `id`/`createdAt` are discarded
   `archivedAt = null`.
 - For each of the four V1 arrays (`trays`, `glass`, `panels`, `extras`),
   each entry becomes one `LoadingItem` with `category` set to that array's
-  name, `loadingListId` = the parent list's `id`, `sortOrder` = its index.
+  name, `loadingListId` = the parent list's `id`, `id` preserved from the
+  V1 item per the rule in §7, `sortOrder` = its index in the original array.
   Field mapping per category:
   - `trays`: `note` -> `LoadingItem.note`, `name` left `""`.
   - `glass`: `note` -> `note`, `door` -> `doorInfo`, `name` left `""`.
@@ -158,9 +159,14 @@ to prevent the same export ever being imported twice.
 - `groups.id` -> `Group.id`: preserved directly.
 - `periodsWorkers.id` -> `Worker.id`, its `stays[].id` -> `Stay.id`:
   preserved directly.
-- `loadingLists.id` -> `LoadingList.id`, and a **new** `id` is generated for
-  each `LoadingItem` (V1's nested items have their own `id` already —
-  preserve those too, no need to regenerate).
+- `loadingLists.id` -> `LoadingList.id`: preserved directly.
+- `LoadingItem.id`: **deterministic rule** — if the V1 nested item already
+  has an `id` (true for every category in the current schema; see
+  `LEGACY_DATA_AUDIT.md` §3), that exact `id` is preserved on the new
+  `LoadingItem` row. A new UUID is generated only for the (currently
+  theoretical, but possible on malformed/old data) case of a nested item
+  with no `id` at all. No item is ever re-generated an ID just because it
+  came from a nested array.
 - `Client.id` is **always newly generated** — V1 has no client entity to
   preserve an ID from.
 - An explicit in-memory mapping table is built during import and attached to
