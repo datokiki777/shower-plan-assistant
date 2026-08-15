@@ -95,7 +95,12 @@ const els = {
   templatesFieldsList: $("#templatesFieldsList"),
   historyToolbar: $("#historyToolbar"),
   historyToggleBtn: $("#historyToggleBtn"),
-  historyBody: $("#historyBody")
+  historyBody: $("#historyBody"),
+  v1ExportToolbar: $("#v1ExportToolbar"),
+  v1ExportToggleBtn: $("#v1ExportToggleBtn"),
+  v1ExportBody: $("#v1ExportBody"),
+  v1ExportBtn: $("#v1ExportBtn"),
+  v1ExportSummary: $("#v1ExportSummary")
 };
 
 const MODE_STORAGE_KEY = "shower-plan-assistant-mode";
@@ -328,6 +333,96 @@ async function saveTemplates() {
 }
 
 window.AppDB = { putRecord, getRecords, clearRecords, deleteRecord, LOADING_STORE, PERIODS_STORE };
+
+// ---- Phase 1: read-only V1 -> V2 migration safety export ----
+// This function only ever calls getRecords() (readonly IndexedDB transactions).
+// It never writes, clears, or deletes anything in any store.
+async function exportV1DataForV2() {
+  if (els.v1ExportSummary) {
+    els.v1ExportSummary.hidden = true;
+    els.v1ExportSummary.innerHTML = "";
+  }
+  if (els.v1ExportBtn) els.v1ExportBtn.disabled = true;
+  showAlert("მონაცემები იკითხება…", "info");
+
+  let reports, groups, loadingLists, workers, templates;
+  try {
+    [reports, groups, loadingLists, workers, templates] = await Promise.all([
+      getRecords(STORE),
+      getRecords(GROUP_STORE),
+      getRecords(LOADING_STORE),
+      getRecords(PERIODS_STORE),
+      getRecords(TEMPLATE_STORE)
+    ]);
+  } catch (error) {
+    console.error("V1 export failed while reading stores:", error);
+    showAlert("ექსპორტი ვერ შესრულდა — ერთ-ერთი მონაცემთა ბაზის წაკითხვა ვერ მოხერხდა. სცადე თავიდან.", "warn");
+    if (els.v1ExportBtn) els.v1ExportBtn.disabled = false;
+    return;
+  }
+
+  // Defensive shape check - fail the whole export rather than ship a partial file.
+  const collected = { reports, groups, loadingLists, workers, templates };
+  const allArrays = Object.values(collected).every((value) => Array.isArray(value));
+  if (!allArrays) {
+    console.error("V1 export failed: unexpected store shape", collected);
+    showAlert("ექსპორტი ვერ შესრულდა — მონაცემები არასრული აღმოჩნდა. სცადე თავიდან.", "warn");
+    if (els.v1ExportBtn) els.v1ExportBtn.disabled = false;
+    return;
+  }
+
+  const exportedAt = new Date().toISOString();
+  const payload = {
+    format: "shower-plan-assistant-legacy-export",
+    sourceVersion: DB_VERSION,
+    exportVersion: 1,
+    exportId: crypto.randomUUID(),
+    exportedAt,
+    data: {
+      reports, // includes each report's `sketch` field as-is - kept in this raw safety backup even though V2 will not import it initially
+      groups,
+      templates,
+      loadingLists,
+      workers
+    }
+  };
+
+  const dateStr = exportedAt.slice(0, 10);
+  const filename = `shower-plan-assistant-v1-export-${dateStr}.json`;
+
+  try {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  } catch (error) {
+    console.error("V1 export failed while building/downloading the file:", error);
+    showAlert("ექსპორტი ვერ შესრულდა — ფაილის შექმნა ვერ მოხერხდა. სცადე თავიდან.", "warn");
+    if (els.v1ExportBtn) els.v1ExportBtn.disabled = false;
+    return;
+  }
+
+  if (els.v1ExportSummary) {
+    els.v1ExportSummary.hidden = false;
+    els.v1ExportSummary.innerHTML = `
+      <p><strong>ექსპორტი წარმატებით შესრულდა.</strong></p>
+      <ul>
+        <li>Reports (ანგარიშები): ${reports.length}</li>
+        <li>Groups (ჯგუფები): ${groups.length}</li>
+        <li>Loading lists (დატვირთვის სიები): ${loadingLists.length}</li>
+        <li>Workers (მუშები): ${workers.length}</li>
+        <li>Template records (შაბლონების ჩანაწერი): ${templates.length}</li>
+      </ul>
+      <p class="templates-hint">ფაილი: ${escapeHtml(filename)}<br>Export ID: ${escapeHtml(payload.exportId)}</p>
+    `;
+  }
+  showAlert(`ექსპორტი დასრულდა — ${filename} ჩამოიტვირთა.`, "ok");
+  if (els.v1ExportBtn) els.v1ExportBtn.disabled = false;
+}
 
 async function saveCurrentReport(showMessage = true) {
   syncReportFromForm();
@@ -1308,6 +1403,8 @@ function bindEvents() {
   bindGroupsListEvents();
   bindSimpleToggle(els.templatesToggleBtn, els.templatesToolbar, els.templatesBody);
   bindSimpleToggle(els.historyToggleBtn, els.historyToolbar, els.historyBody);
+  bindSimpleToggle(els.v1ExportToggleBtn, els.v1ExportToolbar, els.v1ExportBody);
+  els.v1ExportBtn?.addEventListener("click", exportV1DataForV2);
   bindTemplatePickerEvents();
   bindTemplatesPanelEvents();
 }
