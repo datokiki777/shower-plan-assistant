@@ -374,7 +374,8 @@ async function exportV1DataForV2() {
   const exportedAt = new Date().toISOString();
   const payload = {
     format: "shower-plan-assistant-legacy-export",
-    sourceVersion: DB_VERSION,
+    sourceVersion: 1,
+    sourceDbVersion: DB_VERSION,
     exportVersion: 1,
     exportId: crypto.randomUUID(),
     exportedAt,
