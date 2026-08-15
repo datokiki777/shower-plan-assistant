@@ -1159,6 +1159,24 @@ select:focus {
   color: #fff;
 }
 
+.v1-export-summary {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.v1-export-summary ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.v1-export-summary li {
+  font-size: 13.5px;
+  margin-bottom: 2px;
+}
+
 .template-chip-list {
   display: flex;
   flex-wrap: wrap;
