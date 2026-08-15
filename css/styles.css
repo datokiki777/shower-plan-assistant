@@ -978,6 +978,70 @@ select:focus {
 
 .groups-panel .section-head {
   margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.client-search {
+  position: relative;
+  flex: 1 1 220px;
+  max-width: 320px;
+}
+
+.client-search input {
+  width: 100%;
+}
+
+.client-search-results {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(10, 31, 28, 0.18);
+  padding: 6px;
+  display: grid;
+  gap: 4px;
+}
+
+.client-search-result {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 8px 10px;
+  min-height: auto;
+  border-radius: 6px;
+}
+
+.client-search-result:hover {
+  background: var(--soft);
+  border-color: transparent;
+}
+
+.client-search-result small {
+  color: var(--muted);
+}
+
+.client-search-empty {
+  padding: 8px 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+#groupsList {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 2px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .add-group-row {

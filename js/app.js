@@ -84,6 +84,8 @@ const els = {
   newGroupInput: $("#newGroupInput"),
   addGroupBtn: $("#addGroupBtn"),
   groupsList: $("#groupsList"),
+  clientSearchInput: $("#clientSearchInput"),
+  clientSearchResults: $("#clientSearchResults"),
   reportToolbar: $("#reportToolbar"),
   reportToggleBtn: $("#reportToggleBtn"),
   reportBody: $("#reportBody"),
@@ -666,6 +668,70 @@ function loadClientIntoForm(report) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+function hideClientSearchResults() {
+  if (!els.clientSearchResults) return;
+  els.clientSearchResults.hidden = true;
+  els.clientSearchResults.innerHTML = "";
+}
+
+async function runClientSearch(rawQuery) {
+  const query = String(rawQuery || "").trim().toLocaleLowerCase("ka");
+  if (!query) {
+    hideClientSearchResults();
+    return;
+  }
+  const [groups, reports] = await Promise.all([getGroups(), getReports()]);
+  const groupNameById = new Map(groups.map((g) => [g.id, g.name]));
+  const matches = reports
+    .filter((r) => !r.archived && r.groupId && String(r.clientName || "").toLocaleLowerCase("ka").includes(query))
+    .sort((a, b) => String(a.clientName).localeCompare(String(b.clientName), "ka"))
+    .slice(0, 20);
+
+  if (!els.clientSearchResults) return;
+  if (!matches.length) {
+    els.clientSearchResults.innerHTML = '<p class="client-search-empty">კლიენტი ვერ მოიძებნა</p>';
+    els.clientSearchResults.hidden = false;
+    return;
+  }
+  els.clientSearchResults.innerHTML = matches
+    .map(
+      (r) => `
+      <button type="button" class="client-search-result" data-id="${escapeHtml(r.id)}">
+        <strong>${escapeHtml(r.clientName)}</strong>
+        <small>${escapeHtml(groupNameById.get(r.groupId) || "")}</small>
+      </button>`
+    )
+    .join("");
+  els.clientSearchResults.hidden = false;
+}
+
+function bindClientSearchEvents() {
+  els.clientSearchInput?.addEventListener("input", (event) => {
+    runClientSearch(event.target.value);
+  });
+  els.clientSearchInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      els.clientSearchInput.value = "";
+      hideClientSearchResults();
+    }
+  });
+  els.clientSearchResults?.addEventListener("click", async (event) => {
+    const btn = event.target.closest("[data-id]");
+    if (!btn) return;
+    const reports = await getReports();
+    const report = reports.find((r) => r.id === btn.dataset.id);
+    if (!report) return;
+    if (els.clientSearchInput) els.clientSearchInput.value = "";
+    hideClientSearchResults();
+    loadClientIntoForm(report);
+  });
+  document.addEventListener("click", (event) => {
+    if (!els.clientSearchResults || els.clientSearchResults.hidden) return;
+    if (event.target.closest(".client-search")) return;
+    hideClientSearchResults();
+  });
+}
+
 function normalizeMapsLink(value) {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -1229,6 +1295,7 @@ function bindEvents() {
     clearAlert();
   });
   els.addGroupBtn?.addEventListener("click", addGroup);
+  bindClientSearchEvents();
   els.reportToggleBtn?.addEventListener("click", () => {
     setReportBodyOpen(els.reportBody?.hidden !== false);
   });
