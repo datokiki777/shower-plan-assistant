@@ -9,7 +9,10 @@ export interface LoadingRepository {
   createList(input: NewLoadingListInput): Promise<LoadingList>;
   renameList(id: string, title: string): Promise<void>;
   archiveList(id: string): Promise<void>;
+  restoreList(id: string): Promise<void>;
   deleteList(id: string): Promise<void>;
+  duplicateList(id: string): Promise<LoadingList>;
+  searchLists(query: string, opts?: { limit?: number }): Promise<LoadingList[]>;
 
   listItems(loadingListId: string): Promise<LoadingItem[]>;
   addItem(input: NewLoadingItemInput): Promise<LoadingItem>;
@@ -46,6 +49,38 @@ export class LocalLoadingRepository implements LoadingRepository {
 
   async archiveList(id: string): Promise<void> {
     await this.db.loadingLists.update(id, { archivedAt: nowIso(), updatedAt: nowIso() });
+  }
+
+  async restoreList(id: string): Promise<void> {
+    await this.db.loadingLists.update(id, { archivedAt: null, updatedAt: nowIso() });
+  }
+
+  async duplicateList(id: string): Promise<LoadingList> {
+    const original = await this.getList(id);
+    if (!original) throw new Error(`Loading list ${id} not found`);
+    const items = await this.listItems(id);
+    const copy = await this.createList({ title: `${original.title} (ასლი)` });
+    for (const item of items) {
+      await this.addItem({
+        loadingListId: copy.id,
+        category: item.category,
+        name: item.name,
+        note: item.note,
+        quantity: item.quantity,
+        doorInfo: item.doorInfo
+      });
+    }
+    return copy;
+  }
+
+  async searchLists(query: string, opts: { limit?: number } = {}): Promise<LoadingList[]> {
+    const q = query.trim().toLocaleLowerCase("ka");
+    if (!q) return [];
+    const limit = opts.limit ?? 20;
+    return this.db.loadingLists
+      .filter((l) => l.archivedAt === null && l.title.toLocaleLowerCase("ka").includes(q))
+      .limit(limit)
+      .toArray();
   }
 
   async deleteList(id: string): Promise<void> {

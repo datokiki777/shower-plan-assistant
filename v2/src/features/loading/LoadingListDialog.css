@@ -1,0 +1,36 @@
+.loading-dialog__category {
+  margin: var(--space-3) 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-line);
+}
+
+.loading-dialog__category h3 {
+  font-size: var(--text-sm);
+  color: var(--color-brand);
+  margin-bottom: var(--space-2);
+}
+
+.loading-dialog__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.loading-dialog__row input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+}
+
+.loading-dialog__name,
+.loading-dialog__note {
+  flex: 2 1 0;
+  min-width: 0;
+}
+
+.loading-dialog__door,
+.loading-dialog__qty {
+  flex: 1 1 0;
+  min-width: 0;
+}

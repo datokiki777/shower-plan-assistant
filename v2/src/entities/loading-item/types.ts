@@ -25,4 +25,4 @@ export interface LoadingItem {
 }
 
 export type NewLoadingItemInput = Pick<LoadingItem, "loadingListId" | "category"> &
-  Partial<Pick<LoadingItem, "name" | "note" | "quantity" | "doorInfo">>;
+  Partial<Pick<LoadingItem, "name" | "note" | "quantity" | "doorInfo" | "checked">>;
