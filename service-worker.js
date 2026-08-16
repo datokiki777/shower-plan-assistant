@@ -1,4 +1,5 @@
-const CACHE = "shower-plan-assistant-v59";
+const CACHE = "shower-plan-assistant-v60";
+const V2_TAKEOVER_MARKER = "shower-plan-assistant-v2-takeover-v60";
 const ASSETS = [
   "./",
   "./index.html",
@@ -16,15 +17,42 @@ const ASSETS = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
+  event.waitUntil(
+    Promise.all([
+      caches.open(CACHE).then((cache) => cache.addAll(ASSETS)),
+      caches.keys().then(async (keys) => {
+        const isReplacingV2 = keys.some((key) => key.startsWith("workbox-precache"));
+        if (!isReplacingV2) return;
+
+        await caches.open(V2_TAKEOVER_MARKER);
+        await self.skipWaiting();
+      })
+    ])
+  );
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
-      .then(() => self.clients.claim())
+      .then(async (keys) => {
+        const isReplacingV2 = keys.includes(V2_TAKEOVER_MARKER);
+
+        // Cache Storage is separate from IndexedDB. This removes only stale
+        // service-worker caches and never touches application/user data.
+        await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)));
+        await self.clients.claim();
+
+        if (isReplacingV2) {
+          const windowClients = await self.clients.matchAll({
+            type: "window",
+            includeUncontrolled: true
+          });
+          await Promise.all(
+            windowClients.map((client) => client.navigate(client.url).catch(() => undefined))
+          );
+        }
+      })
   );
 });
 
