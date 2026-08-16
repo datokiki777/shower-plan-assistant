@@ -1,0 +1,18 @@
+.ui-icon-button {
+  width: var(--tap-min);
+  height: var(--tap-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.ui-icon-button:hover {
+  background: var(--color-surface-soft);
+}

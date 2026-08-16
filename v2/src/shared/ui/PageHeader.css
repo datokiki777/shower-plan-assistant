@@ -1,0 +1,25 @@
+.ui-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.ui-page-header__eyebrow {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-brand);
+  margin-bottom: 2px;
+}
+
+.ui-page-header__title {
+  font-size: var(--text-xl);
+}
+
+.ui-page-header__actions {
+  display: flex;
+  gap: var(--space-2);
+}
