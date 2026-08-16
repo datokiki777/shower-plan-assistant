@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-BkSabwWG.js";import{t}from"./PlaceholderPage-BJISLzMw.js";var n=e();function r(){return(0,n.jsx)(t,{eyebrow:`Plans`,title:`პერიოდები`,note:`90/180-დღიანი თვალთვალი აქ აშენდება (Phase 6).`})}export{r as default};

@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-BkSabwWG.js";import{t}from"./PlaceholderPage-BJISLzMw.js";var n=e();function r(){return(0,n.jsx)(t,{eyebrow:`Plans`,title:`მთავარი`,note:`აქტიური სამუშაოები, დღის შეხსენებები და ჯამები აქ გამოჩნდება (Phase 4).`})}export{r as default};

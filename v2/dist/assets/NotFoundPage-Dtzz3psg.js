@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-BkSabwWG.js";import{t}from"./PlaceholderPage-BJISLzMw.js";var n=e();function r(){return(0,n.jsx)(t,{title:`გვერდი ვერ მოიძებნა`,note:`404`})}export{r as default};

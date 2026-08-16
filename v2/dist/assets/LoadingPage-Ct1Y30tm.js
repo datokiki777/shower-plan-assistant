@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-BkSabwWG.js";import{t}from"./PlaceholderPage-BJISLzMw.js";var n=e();function r(){return(0,n.jsx)(t,{eyebrow:`Plans`,title:`დატვირთვა`,note:`დატვირთვის სიები აქ აშენდება (Phase 5).`})}export{r as default};

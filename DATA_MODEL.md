@@ -29,6 +29,7 @@ Dexie indexes: `fullName`, `archivedAt`.
 
 ```ts
 type JobStatus = "planned" | "active" | "completed" | "archived";
+type PreArchiveJobStatus = Exclude<JobStatus, "archived">;
 
 interface Job {
   id: string;
@@ -36,6 +37,7 @@ interface Job {
   groupId: string | null;
 
   status: JobStatus;
+  statusBeforeArchive: PreArchiveJobStatus | null;
 
   jobDate: string | null;        // "YYYY-MM-DD" or null
   jobDurationDays: number | null;
@@ -67,7 +69,10 @@ interface Job {
 }
 ```
 Dexie indexes: `clientId`, `groupId`, `status`, `jobDate`, compound
-`[groupId+status]`.
+`[groupId+status]`. (`statusBeforeArchive` is not indexed - it's never
+queried on, only read/written by ID - added in schema version 2 via a real
+`upgrade()`, not an edit to the version-1 definition; see ARCHITECTURE.md
+§4.)
 
 **Status vs. `archivedAt` — the decision, stated explicitly (per spec §15):**
 `status` is the *workflow* state (planned/active/completed), driven by user
@@ -87,6 +92,23 @@ assigned `status: "active"` or `status: "archived"` (mapped directly from
 V1's `archived: false`/`true`), never `"planned"` or `"completed"` — see
 `MIGRATION_PLAN.md` §5 for the exact rule. `"planned"` and `"completed"`
 are available for jobs created in V2 going forward.
+
+**Archive/restore preserves the real status (`statusBeforeArchive`):**
+Because V2 has richer statuses than V1, archiving a Job must not destroy
+that it was `"planned"`, `"active"`, or `"completed"` before archiving.
+Rule, implemented once in `JobRepository.setStatus()` and shared by both
+`archive()`/`restore()` and any direct status change:
+- Transitioning a non-archived Job to `"archived"` copies its current
+  `status` into `statusBeforeArchive` (unless it's already archived, in
+  which case whatever is already remembered is left alone) and stamps
+  `archivedAt`.
+- Transitioning *out of* `"archived"` (via `restore()` or picking a status
+  directly) reads `statusBeforeArchive` as the target status if present,
+  clears `statusBeforeArchive` back to `null`, and clears `archivedAt`.
+- `restore()` specifically falls back to `"active"` — **never** guessing
+  `"completed"` — whenever `statusBeforeArchive` is `null`, which covers
+  both legacy/imported archived Jobs (V1 never had this concept) and any
+  Job archived before schema version 2 existed.
 
 **`clientSnapshot`** exists so a completed job's printed/shared report never
 silently changes if the client's contact info is edited later (spec §14).
