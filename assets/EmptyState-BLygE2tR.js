@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-BkSabwWG.js";var t=e();function n({title:e,description:n,action:r}){return(0,t.jsxs)(`div`,{className:`ui-empty-state`,children:[(0,t.jsx)(`p`,{className:`ui-empty-state__title`,children:e}),n&&(0,t.jsx)(`p`,{className:`ui-empty-state__description`,children:n}),r]})}export{n as t};

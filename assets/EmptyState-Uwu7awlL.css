@@ -1,0 +1,1 @@
+.ui-empty-state{gap:var(--space-2);padding:var(--space-5) var(--space-4);border:1px dashed var(--color-line);border-radius:var(--radius-md);color:var(--color-muted);justify-items:start;display:grid}.ui-empty-state__title{color:var(--color-ink);font-weight:700}.ui-empty-state__description{font-size:var(--text-sm)}

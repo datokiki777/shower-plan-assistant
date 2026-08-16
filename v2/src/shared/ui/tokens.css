@@ -1,0 +1,82 @@
+:root {
+  /* Brand - carried over from the "Plans" rebrand (blue P icon) */
+  --color-brand: #1d3fa0;
+  --color-brand-hover: #16307d;
+  --color-brand-soft: #e8edfa;
+
+  --color-danger: #a53636;
+  --color-danger-soft: #fbe9e9;
+  --color-warn: #8a5a10;
+  --color-warn-soft: #fff3d9;
+  --color-ok: #1c6b4a;
+  --color-ok-soft: #e4f4ec;
+
+  /* Neutrals - tuned for strong outdoor/mobile readability, not decoration */
+  --color-ink: #16211f;
+  --color-muted: #5b6b68;
+  --color-line: #d7dfdd;
+  --color-surface: #ffffff;
+  --color-surface-soft: #f6f8f7;
+  --color-bg: #eef1f0;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  /* Typography */
+  --font-sans: "Noto Sans Georgian", "Segoe UI", system-ui, sans-serif;
+  --text-xs: 12px;
+  --text-sm: 13.5px;
+  --text-md: 15px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+
+  /* Touch targets - large per spec (Android, outdoor use) */
+  --tap-min: 44px;
+
+  --shadow-card: 0 1px 2px rgba(22, 33, 31, 0.06);
+  --shadow-popover: 0 16px 48px rgba(22, 33, 31, 0.22);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  color: var(--color-ink);
+  background: var(--color-bg);
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}

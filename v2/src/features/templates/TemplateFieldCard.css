@@ -1,0 +1,49 @@
+.template-field-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+
+.template-field-card__count {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+
+.template-field-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.template-field-card__empty {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+}
+
+.template-field-card__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background: var(--color-surface-soft);
+  padding: 2px 2px 2px 10px;
+  font-size: var(--text-sm);
+}
+
+.template-field-card__chip .ui-icon-button {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+}
+
+.template-field-card__add-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.template-field-card__add-row input {
+  flex: 1 1 auto;
+}

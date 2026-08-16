@@ -1,0 +1,9 @@
+.settings-page__section-title {
+  font-size: var(--text-md);
+  margin-bottom: var(--space-3);
+}
+
+.settings-page__stack {
+  display: grid;
+  gap: var(--space-3);
+}
