@@ -1,1 +1,0 @@
-import{t as e}from"./jsx-runtime-BkSabwWG.js";var t=e();function n({label:e,tone:n=`neutral`}){return(0,t.jsx)(`span`,{className:`ui-status-badge ui-status-badge--${n}`,children:e})}export{n as t};

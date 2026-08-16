@@ -1,19 +1,489 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ka">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/icons/favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#1d3fa0" />
-    <meta name="description" content="Georgian work-order, loading, and worker-tracking tool." />
-    <title>Plans</title>
-    <script type="module" crossorigin src="/assets/index-DgQshxFF.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/jsx-runtime-BkSabwWG.js">
-    <link rel="modulepreload" crossorigin href="/assets/Card-BwTuJxn6.js">
-    <link rel="stylesheet" crossorigin href="/assets/Card-CSZHIVYD.css">
-    <link rel="stylesheet" crossorigin href="/assets/index-Bz0zuOOQ.css">
-  <link rel="manifest" href="/manifest.webmanifest"></head>
-  <body>
-    <div id="root"></div>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Plans</title>
+  <meta name="description" content="Georgian work reports, delivery logistics, and 90/180-day tracking in one app." />
+  <meta name="theme-color" content="#1d3fa0" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" href="icons/favicon.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script defer src="js/vendor/html2canvas.min.js"></script>
+  <script defer src="js/sketch-editor.js"></script>
+  <script defer src="js/app.js"></script>
+  <script defer src="js/loading.js"></script>
+  <script defer src="js/periods.js"></script>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Manual Georgian report</p>
+        <h1>Plans</h1>
+      </div>
+      <div class="mode-toggle" role="group" aria-label="რეჟიმის არჩევა">
+        <button type="button" id="modeReportBtn" class="mode-toggle-btn is-active">ანგარიში</button>
+        <button type="button" id="modeLoadingBtn" class="mode-toggle-btn">დატვირთვა</button>
+        <button type="button" id="modePeriodsBtn" class="mode-toggle-btn">პერიოდები</button>
+      </div>
+    </header>
+
+    <section id="reportView" class="workspace manual-workspace">
+      <section class="report-panel manual-report-panel">
+        <section class="history groups-panel">
+          <div class="section-head">
+            <h2>ჯგუფები</h2>
+            <div class="client-search">
+              <input type="search" id="clientSearchInput" placeholder="მოძებნე კლიენტი სახელით/გვარით…" autocomplete="off" />
+              <div id="clientSearchResults" class="client-search-results" hidden></div>
+            </div>
+          </div>
+          <div class="add-group-row">
+            <input type="text" id="newGroupInput" placeholder="ახალი ჯგუფის დასახელება" />
+            <button class="primary" type="button" id="addGroupBtn">+ ჯგუფი</button>
+          </div>
+          <div id="groupsList" class="groups-list"></div>
+        </section>
+
+        <div class="report-toolbar" id="reportToolbar">
+          <button type="button" class="report-toggle-btn" id="reportToggleBtn">
+            <span class="report-toggle-caret">▸</span>
+            <h2 id="reportTitle">ახალი სამუშაო</h2>
+          </button>
+        </div>
+
+        <div id="reportBody" hidden>
+        <div class="toolbar-actions form-toolbar-actions">
+          <button type="button" id="clearBtn">გასუფთავება</button>
+          <button type="button" id="saveBtn">შენახვა</button>
+          <button class="primary" type="button" id="exportBtn" hidden>PDF export</button>
+        </div>
+        <div class="alert" id="alertBox" hidden></div>
+
+        <form id="reportForm" class="report-grid">
+          <section class="form-card">
+            <h3>კლიენტის მონაცემები</h3>
+            <label>სახელი და გვარი <input name="clientName" /></label>
+            <label>მისამართი <textarea name="address" rows="3"></textarea></label>
+            <label>ტელეფონი <input name="phone" /></label>
+            <label>Google Maps ლინკი <input name="googleMapsLink" type="url" placeholder="https://maps.google.com/..." /></label>
+            <div class="two-col">
+              <label>სამუშაოს თარიღი <input name="jobDate" type="date" /></label>
+              <label>ხანგრძლივობა
+                <select name="jobDurationDays">
+                  <option value="">—</option>
+                  <option value="1">1 დღიანი</option>
+                  <option value="2">2 დღიანი</option>
+                  <option value="3">3 დღიანი</option>
+                  <option value="4">4 დღიანი</option>
+                  <option value="5">5 დღიანი</option>
+                  <option value="6">6 დღიანი</option>
+                  <option value="7">7 დღიანი</option>
+                </select>
+              </label>
+            </div>
+            <label>ჯგუფი
+              <select name="groupId" id="groupSelect">
+                <option value="" disabled selected>— აირჩიე ჯგუფი —</option>
+              </select>
+            </label>
+          </section>
+
+          <section class="form-card">
+            <h3>პაკეტი და დუშთასე</h3>
+            <div class="two-col">
+              <label>
+                <span class="field-label-row">პაკეტი S/M <button type="button" class="template-picker-btn" data-template-field="packageType">შაბლონები</button></span>
+                <input name="packageType" autocomplete="off" />
+              </label>
+              <label>
+                <span class="field-label-row">ანტირუჩი <button type="button" class="template-picker-btn" data-template-field="antiSlip">შაბლონები</button></span>
+                <input name="antiSlip" autocomplete="off" />
+              </label>
+            </div>
+            <label>
+              <span class="field-label-row">დუშთასეს ზომა <button type="button" class="template-picker-btn" data-template-field="showerTraySize">შაბლონები</button></span>
+              <input name="showerTraySize" autocomplete="off" />
+            </label>
+          </section>
+
+          <section class="form-card">
+            <h3>მასალები</h3>
+            <div class="two-col">
+              <label>
+                <span class="field-label-row">შუშის ზომა <button type="button" class="template-picker-btn" data-template-field="glassPartitionSize">შაბლონები</button></span>
+                <textarea name="glassPartitionSize" rows="2"></textarea>
+              </label>
+              <label>
+                <span class="field-label-row">კარი <button type="button" class="template-picker-btn" data-template-field="hingedDoorSize">შაბლონები</button></span>
+                <input name="hingedDoorSize" autocomplete="off" />
+              </label>
+            </div>
+            <label>
+              <span class="field-label-row">პანელის ფერი <button type="button" class="template-picker-btn" data-template-field="panelColor">შაბლონები</button></span>
+              <input name="panelColor" autocomplete="off" />
+            </label>
+            <label>
+              <span class="field-label-row">იატაკის პანელის ფერი <button type="button" class="template-picker-btn" data-template-field="floorPanelColor">შაბლონები</button></span>
+              <input name="floorPanelColor" autocomplete="off" />
+            </label>
+            <label>
+              <span class="field-label-row">პანელი სადამდე კეთდება <button type="button" class="template-picker-btn" data-template-field="panelHeight">შაბლონები</button></span>
+              <input name="panelHeight" autocomplete="off" />
+            </label>
+            <label>
+              <span class="field-label-row">დასაყენებლების სია <button type="button" class="template-picker-btn" data-template-field="installables">შაბლონები</button></span>
+              <textarea name="installables" rows="4"></textarea>
+            </label>
+          </section>
+
+          <section class="form-card">
+            <h3>დამატებითი სამუშაოები და შენიშვნები</h3>
+            <label>დამატებითი სამუშაოები <textarea name="extraWork" rows="4"></textarea></label>
+            <label>სამუშაო შენიშვნები <textarea name="workNotes" rows="4"></textarea></label>
+          </section>
+
+          <section class="form-card sketch-card wide">
+            <div class="sketch-card-head">
+              <div>
+                <h3>აბაზანის ნახაზი</h3>
+                <p>მარტივი 2D ზედა ხედი</p>
+              </div>
+              <button class="primary" type="button" id="openSketchBtn">ნახაზის გახსნა</button>
+            </div>
+            <div id="sketchPreviewEmpty" class="sketch-preview-empty">ნახაზი ჯერ არ არის შექმნილი</div>
+            <img id="sketchPreview" class="sketch-preview" alt="აბაზანის 2D ნახაზი" hidden />
+            <button type="button" id="removeSketchBtn" class="danger-action" hidden>ნახაზის წაშლა</button>
+          </section>
+        </form>
+        </div>
+
+        <section class="history manual-history">
+          <div class="report-toolbar" id="historyToolbar">
+            <button type="button" class="report-toggle-btn" id="historyToggleBtn">
+              <span class="report-toggle-caret">▸</span>
+              <span>
+                <p class="eyebrow">არქივი</p>
+                <h2>ისტორია</h2>
+              </span>
+            </button>
+            <div class="toolbar-actions">
+              <button type="button" id="clearHistoryBtn">ყველას წაშლა</button>
+            </div>
+          </div>
+          <div id="historyBody" hidden>
+            <div id="historyList" class="groups-list"></div>
+          </div>
+        </section>
+
+        <section class="history templates-panel">
+          <div class="report-toolbar" id="templatesToolbar">
+            <button type="button" class="report-toggle-btn" id="templatesToggleBtn">
+              <span class="report-toggle-caret">▸</span>
+              <span>
+                <p class="eyebrow">სწრაფი შევსება</p>
+                <h2>შაბლონები</h2>
+              </span>
+            </button>
+          </div>
+          <div id="templatesBody" hidden>
+            <p class="templates-hint">დაამატე ან წაშალე მზა ვარიანტები — შევსებისას თითოეული ველის „შაბლონები“ ღილაკს დააჭირე რომ აირჩიო, ან თავად ჩაწერე ველში.</p>
+            <div id="templatesFieldsList" class="groups-list"></div>
+          </div>
+        </section>
+
+        <section class="history v1-export-panel">
+          <div class="report-toolbar" id="v1ExportToolbar">
+            <button type="button" class="report-toggle-btn" id="v1ExportToggleBtn">
+              <span class="report-toggle-caret">▸</span>
+              <span>
+                <p class="eyebrow">უსაფრთხო ასლი</p>
+                <h2>მონაცემების გატანა (V2-სთვის)</h2>
+              </span>
+            </button>
+          </div>
+          <div id="v1ExportBody" hidden>
+            <p class="templates-hint">ეს ღილაკი მხოლოდ კითხულობს არსებულ მონაცემებს და ქმნის JSON ფაილს — არაფერს არ შლის და არ ცვლის აპში.</p>
+            <button type="button" class="primary" id="v1ExportBtn">Export data for V2</button>
+            <div id="v1ExportSummary" class="v1-export-summary" hidden></div>
+          </div>
+        </section>
+
+      </section>
+    </section>
+
+    <section id="loadingView" class="workspace loading-workspace" hidden>
+      <section class="report-panel loading-panel">
+        <div class="report-toolbar">
+          <div>
+            <p class="eyebrow">დატვირთვის სია</p>
+            <h2 id="loadingTitleLabel">ახალი დატვირთვა</h2>
+          </div>
+          <div class="toolbar-actions">
+            <button type="button" id="loadingClearBtn">გასუფთავება</button>
+            <button type="button" id="loadingSaveBtn">შენახვა</button>
+            <button type="button" id="loadingShareBtn">გაზიარება</button>
+            <button class="primary" type="button" id="loadingExportBtn" hidden>PDF export</button>
+          </div>
+        </div>
+
+        <div class="alert" id="loadingAlertBox" hidden></div>
+
+        <label class="loading-title-field">სამუშაოს დასახელება (არასავალდებულო)
+          <input type="text" id="loadingTitleInput" placeholder="მაგ. კლიენტის სახელი ან მისამართი" />
+        </label>
+
+        <div class="loading-grid">
+          <section class="form-card loading-list-card" data-list="trays">
+            <div class="loading-list-head">
+              <h3>დუშთასეები</h3>
+            </div>
+            <div class="loading-items" id="trayItems"></div>
+            <button type="button" class="add-item-btn add-item-btn-bottom" data-add="trays">+ დამატება</button>
+          </section>
+
+          <section class="form-card loading-list-card" data-list="glass">
+            <div class="loading-list-head">
+              <h3>შუშები (+ კარი)</h3>
+            </div>
+            <div class="loading-items" id="glassItems"></div>
+            <button type="button" class="add-item-btn add-item-btn-bottom" data-add="glass">+ დამატება</button>
+          </section>
+
+          <section class="form-card loading-list-card" data-list="panels">
+            <div class="loading-list-head">
+              <h3>პანელები</h3>
+            </div>
+            <div class="loading-items" id="panelItems"></div>
+            <button type="button" class="add-item-btn add-item-btn-bottom" data-add="panels">+ დამატება</button>
+          </section>
+
+          <section class="form-card loading-list-card wide" data-list="extras">
+            <div class="loading-list-head">
+              <h3>სხვა (დასახელება და რაოდენობა)</h3>
+            </div>
+            <div class="loading-items" id="extraItems"></div>
+            <button type="button" class="add-item-btn add-item-btn-bottom" data-add="extras">+ დამატება</button>
+          </section>
+        </div>
+
+        <section class="history loading-history">
+          <div class="section-head">
+            <h2>დატვირთვის ისტორია</h2>
+            <button type="button" id="loadingClearHistoryBtn">წაშლა</button>
+          </div>
+          <div id="loadingHistoryList" class="history-list"></div>
+        </section>
+      </section>
+    </section>
+
+    <section id="periodsView" class="workspace periods-workspace" hidden>
+      <section class="report-panel periods-panel">
+        <div class="report-toolbar">
+          <div>
+            <p class="eyebrow">90 / 180 წესი</p>
+            <h2>პერიოდები</h2>
+          </div>
+          <div class="toolbar-actions">
+            <button type="button" id="periodsBackupBtn">Backup JSON</button>
+            <button type="button" id="periodsRestoreBtn">Restore JSON</button>
+            <input type="file" id="periodsRestoreInput" accept="application/json,.json" hidden />
+            <button class="primary" type="button" id="periodsAddBtn">+ პიროვნება</button>
+          </div>
+        </div>
+
+        <div class="alert" id="periodsAlertBox" hidden></div>
+
+        <div class="periods-stats">
+          <div class="periods-stat">
+            <span>სულ პიროვნება</span>
+            <strong id="periodsTotalCount">0</strong>
+          </div>
+          <div class="periods-stat">
+            <span>ახლა ქვეყანაში</span>
+            <strong id="periodsInsideCount">0</strong>
+          </div>
+          <div class="periods-stat periods-stat-warn">
+            <span>გასვლა ≤ 14 დღე</span>
+            <strong id="periodsUrgentCount">0</strong>
+          </div>
+        </div>
+
+        <div class="periods-search-row">
+          <input type="search" id="periodsSearchInput" placeholder="მოძებნე სახელი…" />
+        </div>
+
+        <div id="periodsWorkerList" class="periods-worker-list"></div>
+        <p class="loading-empty" id="periodsEmptyState" hidden>ჯერ პიროვნება არ არის დამატებული — დაამატე პირველი ღილაკით „+ პიროვნება“.</p>
+      </section>
+    </section>
+  </main>
+
+  <dialog id="periodsWorkerDialog" class="periods-dialog">
+    <form id="periodsWorkerForm" method="dialog">
+      <div class="periods-dialog-head">
+        <div>
+          <p class="eyebrow">ჩანაწერი</p>
+          <h2 id="periodsWorkerDialogTitle">პიროვნების დამატება</h2>
+        </div>
+        <button type="button" class="icon-action" data-periods-close>×</button>
+      </div>
+      <input type="hidden" id="periodsWorkerId" />
+      <label>სახელი და გვარი <input id="periodsWorkerName" required maxlength="100" autocomplete="off" placeholder="მაგ. გიორგი მაისურაძე" /></label>
+      <label>ჩამოსვლის თარიღი <input id="periodsEntryDate" required type="date" /></label>
+      <p class="periods-hint">ჩამოსვლის დღე ითვლება პირველ დღედ.</p>
+      <div class="periods-dialog-actions">
+        <button type="button" data-periods-close>გაუქმება</button>
+        <button class="primary" type="submit">შენახვა</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="periodsExitDialog" class="periods-dialog">
+    <form id="periodsExitForm" method="dialog">
+      <div class="periods-dialog-head">
+        <div>
+          <p class="eyebrow">გასვლის დაფიქსირება</p>
+          <h2 id="periodsExitWorkerName"></h2>
+        </div>
+        <button type="button" class="icon-action" data-periods-close>×</button>
+      </div>
+      <input type="hidden" id="periodsExitWorkerId" />
+      <input type="hidden" id="periodsExitStayId" />
+      <label>გასვლის თარიღი <input id="periodsExitDate" required type="date" /></label>
+      <p class="periods-hint">გასვლის დღეც ქვეყანაში ყოფნის დღედ ითვლება.</p>
+      <div class="periods-dialog-actions">
+        <button type="button" data-periods-close>გაუქმება</button>
+        <button class="primary" type="submit">დადასტურება</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="periodsHistoryDialog" class="periods-dialog periods-wide-dialog">
+    <div class="periods-dialog-head">
+      <div>
+        <p class="eyebrow">ისტორია</p>
+        <h2 id="periodsHistoryWorkerName"></h2>
+      </div>
+      <button type="button" class="icon-action" data-periods-close>×</button>
+    </div>
+    <div id="periodsHistoryList"></div>
+  </dialog>
+
+  <dialog id="sketchDialog" class="sketch-dialog">
+    <form method="dialog" class="sketch-editor-shell">
+      <header class="sketch-editor-header">
+        <div>
+          <p class="eyebrow">2D ზედა ხედი</p>
+          <h2>აბაზანის ნახაზი</h2>
+        </div>
+        <button type="button" id="closeSketchBtn" class="icon-action" aria-label="დახურვა" title="დახურვა">×</button>
+      </header>
+
+      <div class="sketch-editor-body">
+        <aside class="sketch-tools">
+          <section class="sketch-tool-section">
+            <h3 id="sketchSizeTitle">ოთახის ზომა</h3>
+            <p id="sketchSizeHint" class="sketch-size-hint">ცარიელ ადგილზე დაჭერით ოთახის ზომებზე დაბრუნდები.</p>
+            <div class="two-col">
+              <label><span id="sketchWidthLabel">სიგანე (სმ)</span><input id="roomWidthInput" type="number" min="1" max="1500" step="1" value="300" /></label>
+              <label><span id="sketchHeightLabel">სიგრძე (სმ)</span><input id="roomHeightInput" type="number" min="1" max="1500" step="1" value="250" /></label>
+            </div>
+          </section>
+
+          <section class="sketch-tool-section">
+            <h3>ელემენტები</h3>
+            <div id="sketchPalette" class="sketch-palette">
+              <button type="button" data-sketch-type="door"><span style="--swatch:#c79a45"></span>კარი</button>
+              <button type="button" data-sketch-type="window"><span style="--swatch:#5b8db8"></span>ფანჯარა</button>
+              <button type="button" data-sketch-type="shower"><span style="--swatch:#5ca8ad"></span>დუშთასე</button>
+              <button type="button" data-sketch-type="toilet"><span style="--swatch:#8b78b5"></span>ტუალეტი</button>
+              <button type="button" data-sketch-type="sink"><span style="--swatch:#4f968d"></span>ხელსაბანი</button>
+              <button type="button" data-sketch-type="radiator"><span style="--swatch:#bd6b6b"></span>რადიატორი</button>
+              <button type="button" data-sketch-type="glass"><span style="--swatch:#d55454"></span>შუშა (ESG)</button>
+              <button type="button" data-sketch-type="glassDoor"><span style="--swatch:#e58b8b"></span>შუშის კარი</button>
+              <button type="button" data-sketch-type="innerWall"><span style="--swatch:#404846"></span>შიდა კედელი</button>
+              <button type="button" data-sketch-type="panelZone"><span style="--swatch:#7596ad"></span>პანელის ზონა</button>
+              <button type="button" data-sketch-type="outerNiche"><span style="--swatch:#c48454"></span>გარე უჯრა</button>
+              <button type="button" data-sketch-type="innerNiche"><span style="--swatch:#9d7a51"></span>შიდა უჯრა</button>
+              <button type="button" data-sketch-type="floorFill"><span style="--swatch:#79a471"></span>იატაკის ამოვსება</button>
+              <button type="button" data-sketch-type="brauseset"><span style="--swatch:#3979b7"></span>Brauseset</button>
+              <button type="button" data-sketch-type="regendusche"><span style="--swatch:#7867b8"></span>Regendusche</button>
+              <button type="button" data-sketch-type="mischbatterie"><span style="--swatch:#d18434"></span>Mischbatterie</button>
+              <button type="button" data-sketch-type="thermomischbatterie"><span style="--swatch:#b64f6c"></span>Thermomischbatterie</button>
+              <button type="button" data-sketch-type="haltegriff"><span style="--swatch:#397f5d"></span>Haltegriff</button>
+            </div>
+          </section>
+
+          <section class="sketch-tool-section selected-tools">
+            <h3>არჩეული ელემენტი</h3>
+            <div class="sketch-selection-actions">
+              <button type="button" id="rotateSketchItemBtn">↻ 90°</button>
+              <button type="button" id="flipSketchItemBtn">გაღების მხარე</button>
+              <button type="button" id="deleteSketchItemBtn" class="danger-action">წაშლა</button>
+            </div>
+          </section>
+
+          <section class="sketch-tool-section">
+            <h3>ნახაზის განმარტება</h3>
+            <label>
+              დამატებითი ტექსტი
+              <textarea id="sketchNoteInput" rows="4" maxlength="300" placeholder="მაგალითად: კარი იღება გარეთ, შუშა ფიქსირებულია..."></textarea>
+            </label>
+          </section>
+        </aside>
+
+        <section class="sketch-stage-wrap">
+          <canvas id="sketchCanvas" aria-label="აბაზანის ნახაზის სამუშაო სივრცე"></canvas>
+          <p class="sketch-stage-hint">დაამატე ელემენტი და თითით ან მაუსით გადაათრიე სასურველ ადგილზე.</p>
+        </section>
+      </div>
+
+      <footer class="sketch-editor-footer">
+        <button type="button" id="clearSketchBtn" class="danger-action">ყველაფრის გასუფთავება</button>
+        <div>
+          <button type="button" id="cancelSketchBtn">გაუქმება</button>
+          <button type="button" id="saveSketchBtn" class="primary">ნახაზის შენახვა</button>
+        </div>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog id="updateDialog" class="update-dialog">
+    <div class="update-dialog-body">
+      <strong>ახალი ვერსია მზადაა</strong>
+      <p>გსურთ ახლავე განახლება? ბოლო ცვლილებები ჩაიტვირთება.</p>
+      <div class="update-dialog-actions">
+        <button type="button" id="updateNoBtn">არა</button>
+        <button type="button" id="updateYesBtn" class="primary">დიახ, განახლება</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="confirmDialog" class="confirm-dialog">
+    <div class="confirm-dialog-body">
+      <h2 id="confirmDialogTitle">დაადასტურე</h2>
+      <p id="confirmDialogMessage"></p>
+    </div>
+    <div class="confirm-dialog-actions">
+      <button type="button" id="confirmDialogCancelBtn">გაუქმება</button>
+      <button type="button" id="confirmDialogOkBtn" class="primary">დადასტურება</button>
+    </div>
+  </dialog>
+
+  <dialog id="templatePickerDialog" class="confirm-dialog template-picker-dialog">
+    <div class="confirm-dialog-body">
+      <div class="template-picker-head">
+        <h2 id="templatePickerTitle">შაბლონები</h2>
+        <button type="button" class="icon-action" id="templatePickerCloseXBtn" aria-label="დახურვა">×</button>
+      </div>
+      <p class="templates-hint" id="templatePickerHint"></p>
+      <div id="templatePickerList" class="template-picker-list"></div>
+    </div>
+    <div class="confirm-dialog-actions">
+      <button type="button" id="templatePickerCloseBtn">დახურვა</button>
+    </div>
+  </dialog>
+</body>
 </html>
