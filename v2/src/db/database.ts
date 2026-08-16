@@ -49,6 +49,25 @@ export class AppDatabase extends Dexie {
       stays: "id, workerId, [workerId+entryDate]",
       migrationRecords: "id, sourceExportId"
     });
+
+    // Version 2: adds Job.statusBeforeArchive so archive/restore preserves
+    // the Job's real business status (planned/active/completed) instead of
+    // always forcing "active" on restore - see entities/job/types.ts and
+    // DATA_MODEL.md §2. No index change (the field isn't queried on), so
+    // only an upgrade() is needed, not a new .stores() definition - existing
+    // jobs are backfilled with statusBeforeArchive: null (the same "no
+    // remembered prior status" value new/legacy-imported archived Jobs get;
+    // restore() falls back to "active" for those, never guesses "completed").
+    this.version(2).upgrade(async (tx) => {
+      await tx
+        .table("jobs")
+        .toCollection()
+        .modify((job: { statusBeforeArchive?: unknown }) => {
+          if (job.statusBeforeArchive === undefined) {
+            job.statusBeforeArchive = null;
+          }
+        });
+    });
   }
 }
 

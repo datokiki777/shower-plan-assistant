@@ -8,14 +8,16 @@ import { EmptyState } from "@/shared/ui/EmptyState";
 import { useToast } from "@/shared/ui/Toast";
 import { useConfirm } from "@/shared/ui/ConfirmDialog";
 import { groupRepository } from "@/db/repositories";
-import { canPermanentlyDeleteGroup } from "@/entities/group";
-import { useGroups } from "@/features/groups/useGroups";
+import { canPermanentlyDeleteGroup, type Group } from "@/entities/group";
+import { useGroups, type GroupWithJobCount } from "@/features/groups/useGroups";
+import { GroupForm } from "@/features/groups/GroupForm";
 import "./GroupsPage.css";
 
 export default function GroupsPage() {
   const [includeArchived, setIncludeArchived] = useState(false);
   const { groups, reload } = useGroups({ includeArchived });
   const [newName, setNewName] = useState("");
+  const [renameTarget, setRenameTarget] = useState<Group | null>(null);
   const showToast = useToast();
   const confirm = useConfirm();
 
@@ -24,15 +26,6 @@ export default function GroupsPage() {
     if (!name) return;
     await groupRepository.create({ name });
     setNewName("");
-    reload();
-  };
-
-  const handleRename = async (id: string, currentName: string) => {
-    const next = window.prompt("ჯგუფის ახალი დასახელება:", currentName);
-    if (next == null) return;
-    const trimmed = next.trim();
-    if (!trimmed) return;
-    await groupRepository.rename(id, trimmed);
     reload();
   };
 
@@ -92,7 +85,7 @@ export default function GroupsPage() {
       {groups.length === 0 && <EmptyState title="ჯგუფი ჯერ არ არის" description="შექმენი პირველი ჯგუფი ზემოთ." />}
 
       <div className="groups-page__list">
-        {groups.map((g) => (
+        {groups.map((g: GroupWithJobCount) => (
           <Card key={g.id} className="groups-page__row">
             <div className="groups-page__row-head">
               <strong>{g.name}</strong>
@@ -104,7 +97,7 @@ export default function GroupsPage() {
                 <Button onClick={() => void handleRestore(g.id)}>აღდგენა</Button>
               ) : (
                 <>
-                  <Button onClick={() => void handleRename(g.id, g.name)}>გადარქმევა</Button>
+                  <Button onClick={() => setRenameTarget(g)}>გადარქმევა</Button>
                   <Button onClick={() => void handleArchive(g.id, g.name)}>დაარქივება</Button>
                 </>
               )}
@@ -115,6 +108,8 @@ export default function GroupsPage() {
           </Card>
         ))}
       </div>
+
+      <GroupForm open={renameTarget !== null} onClose={() => setRenameTarget(null)} group={renameTarget} onSaved={reload} />
     </div>
   );
 }

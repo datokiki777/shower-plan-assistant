@@ -1,4 +1,5 @@
 import { describe, expect, it, afterEach } from "vitest";
+import Dexie from "dexie";
 import { AppDatabase, V2_DB_NAME } from "@/db/database";
 
 describe("AppDatabase", () => {
@@ -17,13 +18,13 @@ describe("AppDatabase", () => {
     expect(V2_DB_NAME).not.toBe("shower-plan-assistant");
   });
 
-  it("opens successfully at schema version 1 with all nine tables", async () => {
+  it("opens successfully at the current schema version with all nine tables", async () => {
     const testDb = new AppDatabase(`test-${crypto.randomUUID()}`);
     openDatabases.push(testDb);
 
     await testDb.open();
 
-    expect(testDb.verno).toBe(1);
+    expect(testDb.verno).toBe(2);
     expect(testDb.tables.map((t) => t.name).sort()).toEqual(
       [
         "clients",
@@ -37,6 +38,64 @@ describe("AppDatabase", () => {
         "workers"
       ].sort()
     );
+  });
+
+  it("migrates an existing version-1 database: backfills statusBeforeArchive on real upgrade, not just on fresh installs", async () => {
+    const dbName = `test-migration-${crypto.randomUUID()}`;
+
+    // Simulate a real V2 user who has been running schema version 1 (i.e.
+    // before this correction shipped) and already has a job saved without
+    // statusBeforeArchive at all.
+    const legacyDb = new Dexie(dbName);
+    legacyDb.version(1).stores({
+      clients: "id, fullName, archivedAt",
+      jobs: "id, clientId, groupId, status, jobDate, [groupId+status]",
+      groups: "id, name, archivedAt",
+      fieldTemplates: "id, fieldKey, [fieldKey+sortOrder]",
+      loadingLists: "id, archivedAt",
+      loadingItems: "id, loadingListId, [loadingListId+category]",
+      workers: "id, archivedAt",
+      stays: "id, workerId, [workerId+entryDate]",
+      migrationRecords: "id, sourceExportId"
+    });
+    await legacyDb.open();
+    await legacyDb.table("jobs").add({
+      id: "legacy-job-1",
+      clientId: "c1",
+      groupId: null,
+      status: "archived",
+      // no statusBeforeArchive field at all - this is the real pre-migration shape
+      jobDate: null,
+      jobDurationDays: null,
+      packageType: "",
+      antiSlip: "",
+      showerTraySize: "",
+      glassPartitionSize: [],
+      hingedDoorSize: "",
+      panelColor: "",
+      floorPanelColor: "",
+      panelHeight: "",
+      installables: [],
+      extraWork: [],
+      workNotes: [],
+      clientSnapshot: { fullName: "Legacy Client", address: "", phone: "" },
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      archivedAt: "2026-01-01T00:00:00.000Z"
+    });
+    legacyDb.close();
+
+    // Now open the SAME database name with the real AppDatabase (schema
+    // version 2) - this exercises the actual upgrade() path, not a
+    // freshly-created database that never needed migrating.
+    const upgraded = new AppDatabase(dbName);
+    openDatabases.push(upgraded);
+    await upgraded.open();
+
+    expect(upgraded.verno).toBe(2);
+    const migratedJob = await upgraded.jobs.get("legacy-job-1");
+    expect(migratedJob?.statusBeforeArchive).toBeNull();
+    expect(migratedJob?.status).toBe("archived"); // untouched by the migration itself
   });
 
   it("can write and read a record in each table (basic round-trip)", async () => {
@@ -63,6 +122,7 @@ describe("AppDatabase", () => {
       clientId: "c1",
       groupId: "g1",
       status: "active" as const,
+      statusBeforeArchive: null,
       jobDate: null,
       jobDurationDays: null,
       packageType: "",

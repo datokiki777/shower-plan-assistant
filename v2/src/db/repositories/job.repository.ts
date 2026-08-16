@@ -105,6 +105,7 @@ export class LocalJobRepository implements JobRepository {
     const job: Job = {
       id: createId(),
       ...input,
+      statusBeforeArchive: null,
       createdAt: now,
       updatedAt: now,
       archivedAt: null
@@ -117,10 +118,27 @@ export class LocalJobRepository implements JobRepository {
     await this.db.jobs.update(id, { ...patch, updatedAt: nowIso() });
   }
 
+  /** The single place status transitions happen, so archive/restore and any
+   * direct status change (e.g. the Job detail status dropdown) share exactly
+   * one rule for statusBeforeArchive/archivedAt bookkeeping - see
+   * entities/job/types.ts and DATA_MODEL.md §2. */
   async setStatus(id: string, status: JobStatus): Promise<void> {
+    const job = await this.db.jobs.get(id);
+    if (!job) return;
+
     const patch: Partial<Job> = { status, updatedAt: nowIso() };
-    if (status === "archived") patch.archivedAt = nowIso();
-    else patch.archivedAt = null;
+    if (status === "archived") {
+      // Only remember the prior status the first time it archives - if it's
+      // already archived, keep whatever was already remembered.
+      if (job.status !== "archived") patch.statusBeforeArchive = job.status;
+      patch.archivedAt = nowIso();
+    } else {
+      // Any transition to a non-archived status - whether via restore() or
+      // an explicit dropdown pick - clears the remembered value and the
+      // archive timestamp together.
+      patch.statusBeforeArchive = null;
+      patch.archivedAt = null;
+    }
     await this.db.jobs.update(id, patch);
   }
 
@@ -128,8 +146,15 @@ export class LocalJobRepository implements JobRepository {
     await this.setStatus(id, "archived" satisfies JobStatus);
   }
 
+  /** Restores to the status remembered in statusBeforeArchive. Falls back to
+   * "active" (never guesses "completed") for Jobs with no remembered prior
+   * status - true both for legacy/imported archived Jobs and for any Job
+   * that was never archived through this repository. */
   async restore(id: string): Promise<void> {
-    await this.setStatus(id, "active" satisfies JobStatus);
+    const job = await this.db.jobs.get(id);
+    if (!job) return;
+    const restoredStatus: JobStatus = job.statusBeforeArchive ?? "active";
+    await this.setStatus(id, restoredStatus);
   }
 
   async delete(id: string): Promise<void> {

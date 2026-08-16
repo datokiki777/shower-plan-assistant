@@ -9,6 +9,11 @@
  */
 export type JobStatus = "planned" | "active" | "completed" | "archived";
 
+/** The three "real" business statuses a Job can have while not archived.
+ * Used for `statusBeforeArchive` - see the field doc below and
+ * DATA_MODEL.md §2 (Job status preservation). */
+export type PreArchiveJobStatus = Exclude<JobStatus, "archived">;
+
 export interface JobClientSnapshot {
   fullName: string;
   address: string;
@@ -21,6 +26,15 @@ export interface Job {
   groupId: string | null;
 
   status: JobStatus;
+  /** Remembers the status the Job had immediately before it was archived, so
+   * restoring it returns to exactly that status instead of always forcing
+   * "active". Set whenever a non-archived Job transitions to "archived";
+   * cleared back to null on restore. Stays null for Jobs that have never
+   * been archived, and for legacy/imported archived Jobs where V1 has no
+   * equivalent concept - restore() falls back to "active" in that case
+   * (never guesses "completed"). See DATA_MODEL.md §2 and
+   * MIGRATION_PLAN.md §5. */
+  statusBeforeArchive: PreArchiveJobStatus | null;
 
   jobDate: string | null; // "YYYY-MM-DD" or null
   jobDurationDays: number | null;
@@ -50,4 +64,4 @@ export interface Job {
   archivedAt: string | null;
 }
 
-export type NewJobInput = Omit<Job, "id" | "createdAt" | "updatedAt" | "archivedAt" | "clientSnapshot">;
+export type NewJobInput = Omit<Job, "id" | "createdAt" | "updatedAt" | "archivedAt" | "clientSnapshot" | "statusBeforeArchive">;

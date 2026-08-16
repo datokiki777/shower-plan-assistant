@@ -69,7 +69,7 @@ describe("LocalJobRepository", () => {
     expect(reloaded?.clientSnapshot).toEqual({ fullName: "საწყისი სახელი", address: "ძველი მისამართი", phone: "111" });
   });
 
-  it("setStatus/archive/restore transitions work and set archivedAt consistently", async () => {
+  it("setStatus/archive/restore transitions set archivedAt consistently", async () => {
     const client = await clients.create({ fullName: "კლიენტი", address: "", phone: "", googleMapsLink: "", notes: "" });
     const job = await jobs.create(blankJobInput({ clientId: client.id, clientSnapshot: { fullName: client.fullName, address: "", phone: "" } }));
 
@@ -86,6 +86,59 @@ describe("LocalJobRepository", () => {
     const restored = await jobs.getById(job.id);
     expect(restored?.status).toBe("active");
     expect(restored?.archivedAt).toBeNull();
+  });
+
+  it.each(["planned", "active", "completed"] as const)(
+    "archive() then restore() returns a %s job to exactly %s, not a hardcoded status",
+    async (originalStatus) => {
+      const client = await clients.create({ fullName: "კლიენტი", address: "", phone: "", googleMapsLink: "", notes: "" });
+      const job = await jobs.create(
+        blankJobInput({ clientId: client.id, status: originalStatus, clientSnapshot: { fullName: client.fullName, address: "", phone: "" } })
+      );
+
+      await jobs.archive(job.id);
+      const archived = await jobs.getById(job.id);
+      expect(archived?.status).toBe("archived");
+      expect(archived?.statusBeforeArchive).toBe(originalStatus);
+      expect(archived?.archivedAt).not.toBeNull();
+
+      await jobs.restore(job.id);
+      const restored = await jobs.getById(job.id);
+      expect(restored?.status).toBe(originalStatus);
+      expect(restored?.statusBeforeArchive).toBeNull();
+      expect(restored?.archivedAt).toBeNull();
+    }
+  );
+
+  it("restoring a legacy/imported archived job with no remembered prior status falls back to active, never guesses completed", async () => {
+    const client = await clients.create({ fullName: "კლიენტი", address: "", phone: "", googleMapsLink: "", notes: "" });
+    const job = await jobs.create(
+      blankJobInput({ clientId: client.id, status: "completed", clientSnapshot: { fullName: client.fullName, address: "", phone: "" } })
+    );
+    // Simulate a legacy-imported record: already archived, but with no
+    // statusBeforeArchive ever recorded (exactly what a V1 import produces -
+    // see MIGRATION_PLAN.md §5).
+    await testDb.jobs.update(job.id, { status: "archived", statusBeforeArchive: null, archivedAt: new Date().toISOString() });
+
+    await jobs.restore(job.id);
+    const restored = await jobs.getById(job.id);
+    expect(restored?.status).toBe("active");
+    expect(restored?.status).not.toBe("completed");
+    expect(restored?.statusBeforeArchive).toBeNull();
+  });
+
+  it("archiving an already-archived job does not overwrite the remembered statusBeforeArchive", async () => {
+    const client = await clients.create({ fullName: "კლიენტი", address: "", phone: "", googleMapsLink: "", notes: "" });
+    const job = await jobs.create(
+      blankJobInput({ clientId: client.id, status: "planned", clientSnapshot: { fullName: client.fullName, address: "", phone: "" } })
+    );
+    await jobs.archive(job.id);
+    expect((await jobs.getById(job.id))?.statusBeforeArchive).toBe("planned");
+
+    // Calling archive() again (e.g. a redundant call) must not clobber the
+    // remembered "planned" with "archived".
+    await jobs.archive(job.id);
+    expect((await jobs.getById(job.id))?.statusBeforeArchive).toBe("planned");
   });
 
   it("list() filters by status and by group using indexed queries", async () => {
