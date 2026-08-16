@@ -1,0 +1,41 @@
+.groups-page__add-row {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.groups-page__add-row input {
+  flex: 1 1 auto;
+}
+
+.groups-page__archived-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--color-muted);
+  margin-bottom: var(--space-3);
+}
+
+.groups-page__list {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.groups-page__row-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.groups-page__count {
+  color: var(--color-muted);
+  font-size: var(--text-xs);
+}
+
+.groups-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

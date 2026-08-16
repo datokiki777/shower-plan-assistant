@@ -48,4 +48,17 @@ describe("LocalClientRepository", () => {
     const found = await repo.getById(client.id);
     expect(found?.archivedAt).toBeNull();
   });
+
+  it("editing a client changes updatedAt but never createdAt", async () => {
+    const client = await repo.create({ fullName: "Original", address: "", phone: "", googleMapsLink: "", notes: "" });
+    const originalCreatedAt = client.createdAt;
+
+    await new Promise((r) => setTimeout(r, 5)); // ensure a distinguishable timestamp
+    await repo.update(client.id, { fullName: "Renamed" });
+
+    const updated = await repo.getById(client.id);
+    expect(updated?.createdAt).toBe(originalCreatedAt);
+    expect(updated?.updatedAt).not.toBe(originalCreatedAt);
+    expect(updated?.fullName).toBe("Renamed");
+  });
 });

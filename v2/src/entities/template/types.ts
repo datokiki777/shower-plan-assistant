@@ -31,6 +31,18 @@ export const TEMPLATE_APPEND_FIELDS: ReadonlySet<TemplateFieldKey> = new Set([
   "installables"
 ]);
 
+export const TEMPLATE_FIELD_LABELS: Record<TemplateFieldKey, string> = {
+  packageType: "პაკეტი",
+  antiSlip: "ანტირუჩი",
+  showerTraySize: "დუშთასეს ზომა",
+  glassPartitionSize: "შუშის ზომა",
+  hingedDoorSize: "კარი",
+  panelColor: "პანელის ფერი",
+  floorPanelColor: "იატაკის პანელის ფერი",
+  panelHeight: "პანელი სადამდე კეთდება",
+  installables: "დასაყენებლების სია"
+};
+
 export interface FieldTemplate {
   id: string;
   fieldKey: TemplateFieldKey;
